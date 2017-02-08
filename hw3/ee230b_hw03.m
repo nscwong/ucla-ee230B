@@ -12,8 +12,8 @@
 % Generate Beta(t) assuming white log-normal distribution
 % Measure and plot its PDF and compare with theory
 
-N = 1e5; % Number of samples to generate
-Beta_stdev = 2; % Standard deviation of log-normal Beta
+N = 1e6; % Number of samples to generate
+Beta_stdev = 1; % Standard deviation of log-normal Beta
 
 % Generate log normal vector
 Beta_dB = normrnd(0, Beta_stdev, N, 1);
@@ -23,28 +23,39 @@ Beta = 10.^(Beta_dB/10);
 % Plot histograms in linear and log domains
 figure(1) 
 subplot(2,1,1);
-histogram(Beta);
-title('Beta')
+histogram(Beta, 'Normalization', 'pdf');
+title('Log Normally Distributed Beta')
 xlabel('Amplitude')
+ylabel('Probability Density Function');
 subplot(2,1,2);
-histogram(10*log10(Beta));
-title('Beta (dB)')
+histogram(10*log10(Beta), 'Normalization', 'pdf');
+title('Log Normally Distributed Beta (dB)')
 xlabel('Amplitude (dB)')
+ylabel('Probability Density Function');
 
 % % This is a Rayleigh Distribution (We'll probably need it later)
-% C = normrnd(0, 1, T_len, 1) + 1i.*normrnd(0, 1, T_len, 1); % Is this log-normal?
+% 
+% t = 1000; % Random value?
+% 
+% C = normrnd(0, 1, t) + 1i.*normrnd(0, 1, t); % Is this log-normal?
 % C_abs = abs(C);
 % C_ang = atan2(imag(C), real(C));
 % 
 % figure; % PDF of amplitude
-% histogram(C_abs);
+% histogram(C_abs, 'Normalization', 'pdf');
+% title('Flat Fading Channel Model: Amplitude');
+% xlabel('Amplitude of Complex Gaussian');
+% ylabel('Probability Density Function');
 % 
 % figure; % PDF of phase
-% histogram(C_ang, (-pi):(pi/48):(pi));
+% histogram(C_ang, (-pi):(pi/48):(pi), 'Normalization', 'pdf');
+% title('Flat Fading Channel Model: Phase');
+% xlabel('Phase of Complex Gaussian (radians)');
+% ylabel('Probability Density Function');
 
 %% Part B
 
-% Transmitter uses a square-root-raise-cosine pulse shape
+% Transmitter uses a square-root-raised-cosine pulse shape
 %             generates BPSK modulated signals at rate of 40 Mbps
 %             with an average transmit power of 10 dBm
 % Center frequency is 2.4 GHz
@@ -54,7 +65,8 @@ xlabel('Amplitude (dB)')
 
 f_c = 2.4 * (10^9); % Center Frequency
 alpha = 3; % Path Loss exponent
-
+noise_psd = -170; % dBm/Hz
+avg_tx_power = 10; % dBm
 
 
 % Measure and plot the receive SNR after the RX matched filter for TX-RX
