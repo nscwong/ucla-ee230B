@@ -1,6 +1,8 @@
+% Authors: Gourav Khadge, Nathan Wong
+% 
 % Flat Fading Channel Model
 % Narrowband assumes Flat Fading for simplification
-
+% 
 % h(t) = Beta(t) * delta(t - tau) where the delay tau is fixed,
 % but amplitude Beta(t) is time varying and is often given by a
 % colored random process
@@ -10,17 +12,35 @@
 % Generate Beta(t) assuming white log-normal distribution
 % Measure and plot its PDF and compare with theory
 
-t = 1000; % Random value?
+N = 1e5; % Number of samples to generate
+Beta_stdev = 2; % Standard deviation of log-normal Beta
 
-C = normrnd(0, 1, t) + 1i.*normrnd(0, 1, t); % Is this log-normal?
-C_abs = abs(C);
-C_ang = atan2(imag(C), real(C));
+% Generate log normal vector
+Beta_dB = normrnd(0, Beta_stdev, N, 1);
+% Convert to linear
+Beta = 10.^(Beta_dB/10);
 
-figure; % PDF of amplitude
-histogram(C_abs);
+% Plot histograms in linear and log domains
+figure(1) 
+subplot(2,1,1);
+histogram(Beta);
+title('Beta')
+xlabel('Amplitude')
+subplot(2,1,2);
+histogram(10*log10(Beta));
+title('Beta (dB)')
+xlabel('Amplitude (dB)')
 
-figure; % PDF of phase
-histogram(C_ang, (-pi):(pi/48):(pi));
+% % This is a Rayleigh Distribution (We'll probably need it later)
+% C = normrnd(0, 1, T_len, 1) + 1i.*normrnd(0, 1, T_len, 1); % Is this log-normal?
+% C_abs = abs(C);
+% C_ang = atan2(imag(C), real(C));
+% 
+% figure; % PDF of amplitude
+% histogram(C_abs);
+% 
+% figure; % PDF of phase
+% histogram(C_ang, (-pi):(pi/48):(pi));
 
 %% Part B
 
