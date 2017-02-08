@@ -17,14 +17,20 @@ C_abs = abs(C);
 C_ang = atan2(imag(C), real(C));
 
 figure; % PDF of amplitude
-histogram(C_abs);
+histogram(C_abs, 'Normalization', 'pdf');
+title('Flat Fading Channel Model: Amplitude');
+xlabel('Amplitude of Complex Gaussian');
+ylabel('Probability Density Function');
 
 figure; % PDF of phase
-histogram(C_ang, (-pi):(pi/48):(pi));
+histogram(C_ang, (-pi):(pi/48):(pi), 'Normalization', 'pdf');
+title('Flat Fading Channel Model: Phase');
+xlabel('Phase of Complex Gaussian (radians)');
+ylabel('Probability Density Function');
 
 %% Part B
 
-% Transmitter uses a square-root-raise-cosine pulse shape
+% Transmitter uses a square-root-raised-cosine pulse shape
 %             generates BPSK modulated signals at rate of 40 Mbps
 %             with an average transmit power of 10 dBm
 % Center frequency is 2.4 GHz
@@ -34,7 +40,8 @@ histogram(C_ang, (-pi):(pi/48):(pi));
 
 f_c = 2.4 * (10^9); % Center Frequency
 alpha = 3; % Path Loss exponent
-
+noise_psd = -170; % dBm/Hz
+avg_tx_power = 10; % dBm
 
 
 % Measure and plot the receive SNR after the RX matched filter for TX-RX
