@@ -128,20 +128,22 @@ legend('Transmitted Data', 'Rcv Filter Output',...
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-f_c = 2.4 * (10^9); % Center Frequency
+DataL = 20;             % Data length in symbols
+R = 40e6;               % Data rate
+
 alpha = 3; % Path Loss exponent
-noise_psd = -170; % dBm/Hz
-avg_tx_power_db = 10; % dBm
+noise_psd_dbm = -170; % dBm/Hz
+avg_tx_power_dbm = 10; % dBm
+% avg_tx_power_dbm = -10; % dBm
 
-avg_tx_power = 10^(avg_tx_power_db/10);
+avg_tx_power = 10^(avg_tx_power_dbm/10);
+noise_psd = 10^(noise_psd_dbm/10);
 
+% Filter params
 Nsym = 6;           % Filter span in symbol durations
 rrc_beta = 0.5;         % Roll-off factor
 sampsPerSym = 8;    % Upsampling factor
 
-% Parameters
-DataL = 20;             % Data length in symbols
-R = 40e6;               % Data rate
 Fs = R * sampsPerSym;   % Sampling frequency
 
 % Create a local random stream to be used by random number generators for
@@ -149,7 +151,8 @@ Fs = R * sampsPerSym;   % Sampling frequency
 hStr = RandStream('mt19937ar', 'Seed', 0);
 
 % Generate random data
-bits = 2*randi(hStr, [0 1], DataL, 1)-1;
+bits = randi(hStr, [0 1], DataL, 1);
+symbols = 2*bits-1;
 % Time vector sampled at symbol rate in milliseconds
 time = 1000 * (0: DataL - 1) / R;
 
@@ -162,7 +165,7 @@ rctFilt3 = comm.RaisedCosineTransmitFilter(...
   'OutputSamplesPerSymbol', sampsPerSym);
 % Upsample and filter.
 
-TX = rctFilt3([bits; zeros(Nsym/2,1)]);
+TX = rctFilt3([symbols; zeros(Nsym/2,1)]);
 
 % Filter group delay, since raised cosine filter is linear phase and
 % symmetric.
@@ -179,12 +182,50 @@ TX = TX/sqrt(TX_Power)*sqrt(avg_tx_power);
 % Check if new power is desired power
 % TX_Power = sum(TX.^2)*Fs/length(TX)
 
-carrier = cos(2*pi*Fs*to)';
+% Channel Model
+% TODO
+RX = TX;
 
-passband_TX = TX.*carrier;
+% Is this the right way to generate noise of proper PSD?
+RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
+% Check PSD?
+% I think it's right. 
 
-figure(1)
-plot(passband_TX)
+% Add noise to receiver
+RX = RX + RX_noise;
+
+% Design and normalize filter.
+rcrFilt = comm.RaisedCosineReceiveFilter(...
+  'Shape',                  'Square root', ...
+  'RolloffFactor',          rrc_beta, ...
+  'FilterSpanInSymbols',    Nsym, ...
+  'InputSamplesPerSymbol',  sampsPerSym, ...
+  'DecimationFactor',       1);
+% Filter at the receiver.
+yr = rcrFilt([RX; zeros(Nsym*sampsPerSym/2, 1)]);
+% Correct for propagation delay by removing filter transients
+yr = yr(fltDelay*Fs+1:end);
+
+% Extract on time symbols
+RX_symbols = yr(1:sampsPerSym:end);
+
+% Plot data.
+figure(2)
+stem(time, symbols*5e-5, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yr, 'b-'); hold on;
+plot(time, RX_symbols, 'bo-'); hold off;
+% Set axes and labels.
+xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'Rcv Filter Output',...
+    'Location', 'southeast')
+
+% Make hard decisions
+RX_bits = RX_symbols > 0; 
+
+Error_count = sum(xor(RX_bits,bits));
+
+Error_rate = Error_count/length(bits)
 
 % Measure and plot the receive SNR after the RX matched filter for TX-RX
 % separation distances of 60/80/100/120/140/160 m
