@@ -34,7 +34,8 @@ xlabel('Amplitude (dB)')
 ylabel('Probability Density Function');
 
 %% Part B
-
+clear
+close('all')
 % Transmitter uses a square-root-raised-cosine pulse shape
 %             generates BPSK modulated signals at rate of 40 Mbps
 %             with an average transmit power of 10 dBm
@@ -71,7 +72,7 @@ Fs = R * sampsPerSym;   % Sampling frequency
 % Generate random data
 % bits = randi(hStr, [0 1], DataL, 1);
 TX_bits = randi([0 1], DataL, 1);
-TX_symbols = 2*bits-1;
+TX_symbols = 2*TX_bits-1;
 % Time vector sampled at symbol rate in milliseconds
 time_symbol = 1000 * (0: DataL - 1) / R;
 
@@ -145,9 +146,9 @@ RX_symbols = yr(1:sampsPerSym:end);
 % Make hard decisions
 RX_bits = RX_symbols > 0; 
 
-Error_count = sum(xor(RX_bits,bits));
+Error_count = sum(xor(RX_bits,TX_bits));
 
-Error_rate = Error_count/length(bits);
+Error_rate = Error_count/length(TX_bits);
 
 EbN0 = avg_tx_power*Path_Gain/R/noise_psd;
 EbN0_dB = 10*log10(EbN0);
