@@ -43,6 +43,9 @@ ylabel('Probability Density Function');
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
+d = 80;                 % Distance between TX and RX (m)
+Gl = 1;                 % Antenna gain
+
 DataL = 20;             % Data length in symbols
 R = 40e6;               % Data rate
 
@@ -78,8 +81,6 @@ rctFilt3 = comm.RaisedCosineTransmitFilter(...
   'FilterSpanInSymbols',    Nsym, ...
   'OutputSamplesPerSymbol', sampsPerSym);
 
-
-
 % Upsample and filter.
 TX = step(rctFilt3, [symbols; zeros(Nsym/2,1)]);
 
@@ -99,8 +100,11 @@ TX = TX/sqrt(TX_Power)*sqrt(avg_tx_power);
 % TX_Power = sum(TX.^2)*Fs/length(TX)
 
 % Channel Model
-% TODO
-RX = TX;
+% Part B requires only Path Loss
+lambda = 3e8/R; % c = 3e8 m/s speed of light
+Path_Gain = (lambda/4/pi)^2 * (1/d)*alpha;
+PL_dB = -10*log10(Path_Gain);
+RX = TX*Path_Gain;
 
 % Is this the right way to generate noise of proper PSD?
 RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
@@ -129,8 +133,11 @@ RX_symbols = yr(1:sampsPerSym:end);
 figure(2)
 stem(time, symbols*5e-5, 'kx'); hold on;
 % Plot filtered data.
-plot(to, yr, 'b-'); hold on;
-plot(time, RX_symbols, 'bo-'); hold off;
+plot(to, yr, 'b-'); 
+hold on;
+%plot(time, TX_symbols, 'bo-');
+plot(time, RX_symbols, 'ro-'); 
+hold off;
 % Set axes and labels.
 xlabel('Time (ms)'); ylabel('Amplitude');
 legend('Transmitted Data', 'Rcv Filter Output',...
