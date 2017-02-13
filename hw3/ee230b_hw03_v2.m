@@ -44,7 +44,7 @@ close('all')
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 140;                % Distance between TX and RX (m)
+d = 60;                % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
@@ -225,8 +225,9 @@ Error_rate = Error_count/length(TX_bits);
 
 SNR_required = 6; % dB
 SNR_dBm = 10*log10(10^(SNR_required/10)*10^3);
+Noise_dBm = 10*log10(noise_psd*R*(1+rrc_beta)); % Is this right??
 % SNR_dBm = Pmin - Noise_dBm
-Pmin = SNR_dBm + noise_psd_dbm;
+Pmin = SNR_dBm + Noise_dBm;
 theoretical_outage = 1 - qfunc((Pmin - (avg_tx_power_dbm + 20*log10(lambda/4/pi) - 10*alpha*log10(d)))/shadow_stddev_dB);
 
 simulated_outage = (10*log10(abs(RX_signal)./abs(RX_noise)) < SNR_required);
