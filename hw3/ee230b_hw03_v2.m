@@ -43,8 +43,9 @@ ylabel('Probability Density Function');
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 80;                 % Distance between TX and RX (m)
+d = 60;                 % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
+f_c = 2.4e9;            % Center Carrier Frequency
 
 DataL = 20;             % Data length in symbols
 R = 40e6;               % Data rate
@@ -101,10 +102,10 @@ TX = TX/sqrt(TX_Power)*sqrt(avg_tx_power);
 
 % Channel Model
 % Part B requires only Path Loss
-lambda = 3e8/R; % c = 3e8 m/s speed of light
+lambda = 3e8/f_c; % c = 3e8 m/s speed of light
 Path_Gain = (lambda/4/pi)^2 * (1/d)*alpha;
 PL_dB = -10*log10(Path_Gain);
-RX = TX*Path_Gain;
+RX = 10.^((10*log10(TX) - PL_dB)/10);
 
 % Is this the right way to generate noise of proper PSD?
 RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
@@ -167,7 +168,56 @@ Error_rate = Error_count/length(bits)
 
 % Add log normal shadowing to the system of Part B with STDDEV of 4 dB
 
+% Channel Model
+% Part C requires Path Loss and Shadowing
+lambda = 3e8/f_c; % c = 3e8 m/s speed of light
+shadow_stddev_dB = 4; %dB
+PL_Shadow_dB = normrnd(PL_dB, shadow_stddev_dB, length(TX), 1);
+RX = 10.^((10*log10(TX) - PL_Shadow_dB)/10); % Is this right?
 
+% Is this the right way to generate noise of proper PSD?
+RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
+% Check PSD?
+% I think it's right. 
+
+% Add noise to receiver
+RX = RX + RX_noise;
+
+% Design and normalize filter.
+rcrFilt = comm.RaisedCosineReceiveFilter(...
+  'Shape',                  'Square root', ...
+  'RolloffFactor',          rrc_beta, ...
+  'FilterSpanInSymbols',    Nsym, ...
+  'InputSamplesPerSymbol',  sampsPerSym, ...
+  'DecimationFactor',       1);
+% Filter at the receiver.
+yr = step(rcrFilt,[RX; zeros(Nsym*sampsPerSym/2, 1)]);
+% Correct for propagation delay by removing filter transients
+yr = yr(fltDelay*Fs+1:end);
+
+% Extract on time symbols
+RX_symbols = yr(1:sampsPerSym:end);
+
+% Plot data.
+figure(3)
+stem(time, symbols*5e-5, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yr, 'b-'); 
+hold on;
+%plot(time, TX_symbols, 'bo-');
+plot(time, RX_symbols, 'ro-'); 
+hold off;
+% Set axes and labels.
+xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'Rcv Filter Output',...
+    'Location', 'southeast')
+
+% Make hard decisions
+RX_bits = RX_symbols > 0; 
+
+Error_count = sum(xor(RX_bits,bits));
+
+Error_rate = Error_count/length(bits)
 
 % Application: requires SNR of 6 dB
 % Measure outage probability at a distance of 60/100/140 m
