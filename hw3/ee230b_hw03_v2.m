@@ -35,7 +35,7 @@ ylabel('Probability Density Function');
 
 %% Part B
 clear
-close('all')
+%close('all')
 % Transmitter uses a square-root-raised-cosine pulse shape
 %             generates BPSK modulated signals at rate of 40 Mbps
 %             with an average transmit power of 10 dBm
@@ -60,7 +60,7 @@ noise_psd = 10^(noise_psd_dbm/10);
 
 % Filter params
 Nsym = 6;           % Filter span in symbol durations
-rrc_beta = 0.5;         % Roll-off factor
+rrc_beta = 0;         % Roll-off factor
 sampsPerSym = 8;    % Upsampling factor
 
 Fs = R * sampsPerSym;   % Sampling frequency
@@ -173,8 +173,10 @@ disp(['Simulated Error Rate: ', num2str(Error_rate)]);
 % Part C requires Path Loss and Shadowing
 lambda = 3e8/f_c; % c = 3e8 m/s speed of light
 shadow_stddev_dB = 4; %dB
+Shadow_dB = normrnd(0, shadow_stddev_dB, length(TX), 1);
 PL_Shadow_dB = normrnd(PL_dB, shadow_stddev_dB, length(TX), 1);
-RX = TX.*10.^(PL_Shadow_dB/10); % Is this right?
+RX = TX.*sqrt(Path_Gain).*10.^(Shadow_dB/10); % Is this right?
+%RX = TX.*10.^(-PL_Shadow_dB/10); % Is this right?
 RX_signal = RX;
 
 % Is this the right way to generate noise of proper PSD?
@@ -192,6 +194,7 @@ rcrFilt = comm.RaisedCosineReceiveFilter(...
   'FilterSpanInSymbols',    Nsym, ...
   'InputSamplesPerSymbol',  sampsPerSym, ...
   'DecimationFactor',       1);
+%fvtool(rcrFilt, 'Analysis', 'impulse')
 % Filter at the receiver.
 yr = step(rcrFilt,[RX; zeros(Nsym*sampsPerSym/2, 1)]);
 % Correct for propagation delay by removing filter transients
@@ -227,10 +230,11 @@ SNR_required = 6; % dB
 SNR_dBm = 10*log10(10^(SNR_required/10)*10^3);
 Noise_dBm = 10*log10(noise_psd*R*(1+rrc_beta)); % Is this right??
 % SNR_dBm = Pmin - Noise_dBm
-Pmin = SNR_dBm + Noise_dBm;
+Pmin = SNR_required + Noise_dBm;
 theoretical_outage = 1 - qfunc((Pmin - (avg_tx_power_dbm + 20*log10(lambda/4/pi) - 10*alpha*log10(d)))/shadow_stddev_dB);
 
-simulated_outage = (10*log10(abs(RX_signal)./abs(RX_noise)) < SNR_required);
+RX_symbols_dBm = 10*log10(abs(RX_symbols)/sqrt(R)/10);
+simulated_outage = (RX_symbols_dBm < Pmin);
 simulated_outage = sum(simulated_outage)/numel(simulated_outage);
 
 disp('Part C');
