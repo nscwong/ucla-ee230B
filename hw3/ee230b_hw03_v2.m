@@ -44,11 +44,11 @@ close('all')
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 120;                % Distance between TX and RX (m)
+d = 140;                % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
-DataL = 1e5;            % Data length in symbols
+DataL = 1e6;            % Data length in symbols
 R = 40e6;               % Data rate
 
 alpha = 3; % Path Loss exponent
@@ -174,7 +174,7 @@ disp(['Simulated Error Rate: ', num2str(Error_rate)]);
 lambda = 3e8/f_c; % c = 3e8 m/s speed of light
 shadow_stddev_dB = 4; %dB
 PL_Shadow_dB = normrnd(PL_dB, shadow_stddev_dB, length(TX), 1);
-RX = 10.^((10*log10(TX) - PL_Shadow_dB)/10); % Is this right?
+RX = TX.*10.^(PL_Shadow_dB/10); % Is this right?
 RX_signal = RX;
 
 % Is this the right way to generate noise of proper PSD?
@@ -224,11 +224,12 @@ Error_rate = Error_count/length(TX_bits);
 % Compare simulation results with theoretical predictions
 
 SNR_required = 6; % dB
-% SNR_dB = Pmin - Noise_dB
-Pmin = SNR_required + noise_psd_dbm;
+SNR_dBm = 10*log10(10^(SNR_required/10)*10^3);
+% SNR_dBm = Pmin - Noise_dBm
+Pmin = SNR_dBm + noise_psd_dbm;
 theoretical_outage = 1 - qfunc((Pmin - (avg_tx_power_dbm + 20*log10(lambda/4/pi) - 10*alpha*log10(d)))/shadow_stddev_dB);
 
-simulated_outage = (10*log10(RX_signal./RX_noise) < SNR_required);
+simulated_outage = (10*log10(abs(RX_signal)./abs(RX_noise)) < SNR_required);
 simulated_outage = sum(simulated_outage)/numel(simulated_outage);
 
 disp('Part C');
