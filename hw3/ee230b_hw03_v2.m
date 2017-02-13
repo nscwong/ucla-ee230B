@@ -43,17 +43,16 @@ ylabel('Probability Density Function');
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 60;                 % Distance between TX and RX (m)
+d = 140;                 % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
-DataL = 20;             % Data length in symbols
+DataL = 1e7;             % Data length in symbols
 R = 40e6;               % Data rate
 
 alpha = 3; % Path Loss exponent
 noise_psd_dbm = -170; % dBm/Hz
 avg_tx_power_dbm = 10; % dBm
-% avg_tx_power_dbm = -10; % dBm
 
 avg_tx_power = 10^(avg_tx_power_dbm/10);
 noise_psd = 10^(noise_psd_dbm/10);
@@ -67,13 +66,14 @@ Fs = R * sampsPerSym;   % Sampling frequency
 
 % Create a local random stream to be used by random number generators for
 % repeatability
-hStr = RandStream('mt19937ar', 'Seed', 0);
+% hStr = RandStream('mt19937ar', 'Seed', 0);
 
 % Generate random data
-bits = randi(hStr, [0 1], DataL, 1);
-symbols = 2*bits-1;
+% bits = randi(hStr, [0 1], DataL, 1);
+TX_bits = randi([0 1], DataL, 1);
+TX_symbols = 2*bits-1;
 % Time vector sampled at symbol rate in milliseconds
-time = 1000 * (0: DataL - 1) / R;
+time_symbol = 1000 * (0: DataL - 1) / R;
 
 % Design raised cosine filter with given order in symbols
 rctFilt3 = comm.RaisedCosineTransmitFilter(...
@@ -83,16 +83,16 @@ rctFilt3 = comm.RaisedCosineTransmitFilter(...
   'OutputSamplesPerSymbol', sampsPerSym);
 
 % Upsample and filter.
-TX = step(rctFilt3, [symbols; zeros(Nsym/2,1)]);
+TX = step(rctFilt3, [TX_symbols; zeros(Nsym/2,1)]);
 
 % Filter group delay, since raised cosine filter is linear phase and
 % symmetric.
 fltDelay = Nsym / (2*R);
 % Correct for propagation delay by removing filter transients
 TX = TX(fltDelay*Fs+1:end);
-to = 1000 * (0: DataL*sampsPerSym - 1) / Fs;
+time_rf = 1000 * (0: DataL*sampsPerSym - 1) / Fs;
 
-TX_Power = sum(TX.^2)*Fs/length(TX);
+TX_Power = sum(TX.^2)/length(TX);
 
 % Normalize power and set to desired power
 TX = TX/sqrt(TX_Power)*sqrt(avg_tx_power);
@@ -103,14 +103,12 @@ TX = TX/sqrt(TX_Power)*sqrt(avg_tx_power);
 % Channel Model
 % Part B requires only Path Loss
 lambda = 3e8/f_c; % c = 3e8 m/s speed of light
-Path_Gain = (lambda/4/pi)^2 * (1/d)*alpha;
+Path_Gain = (lambda/(4*pi))^2 * (1/d)^alpha;
 PL_dB = -10*log10(Path_Gain);
-RX = 10.^((10*log10(TX) - PL_dB)/10);
+RX = TX*sqrt(Path_Gain);
 
-% Is this the right way to generate noise of proper PSD?
+% Generate RX noise with correct PSD
 RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
-% Check PSD?
-% I think it's right. 
 
 % Add noise to receiver
 RX = RX + RX_noise;
@@ -131,26 +129,32 @@ yr = yr(fltDelay*Fs+1:end);
 RX_symbols = yr(1:sampsPerSym:end);
 
 % Plot data.
-figure(2)
-stem(time, symbols*5e-5, 'kx'); hold on;
-% Plot filtered data.
-plot(to, yr, 'b-'); 
-hold on;
-%plot(time, TX_symbols, 'bo-');
-plot(time, RX_symbols, 'ro-'); 
-hold off;
-% Set axes and labels.
-xlabel('Time (ms)'); ylabel('Amplitude');
-legend('Transmitted Data', 'Rcv Filter Output',...
-    'Location', 'southeast')
+% figure(2)
+% stem(time, symbols*5e-5, 'kx'); hold on;
+% % Plot filtered data.
+% plot(to, yr, 'b-'); 
+% hold on;
+% %plot(time, TX_symbols, 'bo-');
+% plot(time, RX_symbols, 'ro-'); 
+% hold off;
+% % Set axes and labels.
+% xlabel('Time (ms)'); ylabel('Amplitude');
+% legend('Transmitted Data', 'Rcv Filter Output',...
+%     'Location', 'southeast')
 
 % Make hard decisions
 RX_bits = RX_symbols > 0; 
 
 Error_count = sum(xor(RX_bits,bits));
 
-Error_rate = Error_count/length(bits)
+Error_rate = Error_count/length(bits);
 
+EbN0 = avg_tx_power*Path_Gain/R/noise_psd;
+EbN0_dB = 10*log10(EbN0);
+theoretical_error_rate = qfunc(sqrt(2*EbN0));
+disp(['Eb/N0: ', num2str(EbN0_dB), ' dB']);
+disp(['Theoretical Error Rate: ', num2str(theoretical_error_rate)]);
+disp(['Simulated Error Rate: ', num2str(Error_rate)]);
 % Measure and plot the receive SNR after the RX matched filter for TX-RX
 % separation distances of 60/80/100/120/140/160 m
 
@@ -200,12 +204,12 @@ RX_symbols = yr(1:sampsPerSym:end);
 
 % Plot data.
 figure(3)
-stem(time, symbols*5e-5, 'kx'); hold on;
+stem(time_symbol, TX_symbols*5e-5, 'kx'); hold on;
 % Plot filtered data.
-plot(to, yr, 'b-'); 
+plot(time_rf, yr, 'b-'); 
 hold on;
 %plot(time, TX_symbols, 'bo-');
-plot(time, RX_symbols, 'ro-'); 
+plot(time_symbol, RX_symbols, 'ro-'); 
 hold off;
 % Set axes and labels.
 xlabel('Time (ms)'); ylabel('Amplitude');
