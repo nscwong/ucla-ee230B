@@ -44,11 +44,11 @@ close('all')
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 140;                 % Distance between TX and RX (m)
+d = 120;                % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
-DataL = 1e7;             % Data length in symbols
+DataL = 1e5;            % Data length in symbols
 R = 40e6;               % Data rate
 
 alpha = 3; % Path Loss exponent
@@ -153,21 +153,17 @@ Error_rate = Error_count/length(TX_bits);
 EbN0 = avg_tx_power*Path_Gain/R/noise_psd;
 EbN0_dB = 10*log10(EbN0);
 theoretical_error_rate = qfunc(sqrt(2*EbN0));
+disp('Part B');
 disp(['Eb/N0: ', num2str(EbN0_dB), ' dB']);
 disp(['Theoretical Error Rate: ', num2str(theoretical_error_rate)]);
 disp(['Simulated Error Rate: ', num2str(Error_rate)]);
+
 % Measure and plot the receive SNR after the RX matched filter for TX-RX
 % separation distances of 60/80/100/120/140/160 m
 
-
-
 % Also plot expected theoretical SNR and explain any differences
 
-
-
 % Measure the BER at the same distances as above compare to theory
-
-
 
 %% Part C
 
@@ -179,6 +175,7 @@ lambda = 3e8/f_c; % c = 3e8 m/s speed of light
 shadow_stddev_dB = 4; %dB
 PL_Shadow_dB = normrnd(PL_dB, shadow_stddev_dB, length(TX), 1);
 RX = 10.^((10*log10(TX) - PL_Shadow_dB)/10); % Is this right?
+RX_signal = RX;
 
 % Is this the right way to generate noise of proper PSD?
 RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
@@ -203,28 +200,37 @@ yr = yr(fltDelay*Fs+1:end);
 % Extract on time symbols
 RX_symbols = yr(1:sampsPerSym:end);
 
-% Plot data.
-figure(3)
-stem(time_symbol, TX_symbols*5e-5, 'kx'); hold on;
-% Plot filtered data.
-plot(time_rf, yr, 'b-'); 
-hold on;
-%plot(time, TX_symbols, 'bo-');
-plot(time_symbol, RX_symbols, 'ro-'); 
-hold off;
-% Set axes and labels.
-xlabel('Time (ms)'); ylabel('Amplitude');
-legend('Transmitted Data', 'Rcv Filter Output',...
-    'Location', 'southeast')
+% % Plot data.
+% figure(3)
+% stem(time_symbol, TX_symbols*5e-5, 'kx'); hold on;
+% % Plot filtered data.
+% plot(time_rf, yr, 'b-'); 
+% hold on;
+% %plot(time, TX_symbols, 'bo-');
+% plot(time_symbol, RX_symbols, 'ro-'); 
+% hold off;
+% % Set axes and labels.
+% xlabel('Time (ms)'); ylabel('Amplitude');
+% legend('Transmitted Data', 'Rcv Filter Output',...
+%     'Location', 'southeast')
 
 % Make hard decisions
 RX_bits = RX_symbols > 0; 
-
-Error_count = sum(xor(RX_bits,bits));
-
-Error_rate = Error_count/length(bits)
+Error_count = sum(xor(RX_bits,TX_bits));
+Error_rate = Error_count/length(TX_bits);
 
 % Application: requires SNR of 6 dB
 % Measure outage probability at a distance of 60/100/140 m
 % Compare simulation results with theoretical predictions
 
+SNR_required = 6; % dB
+% SNR_dB = Pmin - Noise_dB
+Pmin = SNR_required + noise_psd_dbm;
+theoretical_outage = 1 - qfunc((Pmin - (avg_tx_power_dbm + 20*log10(lambda/4/pi) - 10*alpha*log10(d)))/shadow_stddev_dB);
+
+simulated_outage = (10*log10(RX_signal./RX_noise) < SNR_required);
+simulated_outage = sum(simulated_outage)/numel(simulated_outage);
+
+disp('Part C');
+disp(['Theoretical Outage: ', num2str(theoretical_outage)]);
+disp(['Simulated Outage: ', num2str(simulated_outage)]);
