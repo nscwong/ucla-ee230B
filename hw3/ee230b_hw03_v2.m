@@ -44,7 +44,7 @@ clear
 % Assume only path loss (no shadowing) between transmitter and receiver
 % Receiver uses a sqrt-raised-cosine matched filter to the transmitter
 
-d = 60;                % Distance between TX and RX (m)
+d = 140;                % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
@@ -109,7 +109,7 @@ PL_dB = -10*log10(Path_Gain);
 RX = TX*sqrt(Path_Gain);
 
 % Generate RX noise with correct PSD
-RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
+RX_noise = randn(length(TX),1)*sqrt(Fs*noise_psd);
 
 % Add noise to receiver
 RX = RX + RX_noise;
@@ -175,12 +175,12 @@ lambda = 3e8/f_c; % c = 3e8 m/s speed of light
 shadow_stddev_dB = 4; %dB
 Shadow_dB = normrnd(0, shadow_stddev_dB, length(TX), 1);
 PL_Shadow_dB = normrnd(PL_dB, shadow_stddev_dB, length(TX), 1);
-RX = TX.*sqrt(Path_Gain).*10.^(Shadow_dB/10); % Is this right?
+RX = TX.*sqrt(Path_Gain).*sqrt(10.^(Shadow_dB/10)); % Is this right?
 %RX = TX.*10.^(-PL_Shadow_dB/10); % Is this right?
 RX_signal = RX;
 
 % Is this the right way to generate noise of proper PSD?
-RX_noise = randn(length(TX),1)*sqrt(Fs/2*noise_psd);
+RX_noise = randn(length(TX),1)*sqrt(noise_psd*Fs*2);
 % Check PSD?
 % I think it's right. 
 
@@ -228,12 +228,12 @@ Error_rate = Error_count/length(TX_bits);
 
 SNR_required = 6; % dB
 SNR_dBm = 10*log10(10^(SNR_required/10)*10^3);
-Noise_dBm = 10*log10(noise_psd*R*(1+rrc_beta)); % Is this right??
+Noise_dBm = 10*log10(noise_psd*Fs*(1+rrc_beta)); % Is this right??
 % SNR_dBm = Pmin - Noise_dBm
 Pmin = SNR_required + Noise_dBm;
 theoretical_outage = 1 - qfunc((Pmin - (avg_tx_power_dbm + 20*log10(lambda/4/pi) - 10*alpha*log10(d)))/shadow_stddev_dB);
 
-RX_symbols_dBm = 10*log10(abs(RX_symbols)/sqrt(R)/10);
+RX_symbols_dBm = 10*log10(abs(RX_symbols)/sqrt(R));
 simulated_outage = (RX_symbols_dBm < Pmin);
 simulated_outage = sum(simulated_outage)/numel(simulated_outage);
 
