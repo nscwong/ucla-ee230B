@@ -5,6 +5,7 @@ function tx_packet = create_tx_packet(data)
 % Remember: Only the 20 MHz mode will be implemented
 
 % Create the subframes
+% Page 
 subframe_lstf = sqrt(0.5)*[0,0,1+1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,0,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0];
 % Page 26 and 27 of spec
 subframe_htltf1 = [1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,0,1,-1,-1,1,1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,-1,-1,1,-1,1,-1,1,1,1,1,-1,-1];
@@ -31,6 +32,9 @@ subframe_htltfs = [];
 % Page 28 and 29 of spec
 subframe_data = data;
 
+tx_packet = [subframe_lstf, subframe_htltf1, subframe_htsig, subframe_htltfs, subframe_data];
+
+% Plot data
 
 
 end

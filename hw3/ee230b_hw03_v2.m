@@ -48,7 +48,7 @@ d = 140;                % Distance between TX and RX (m)
 Gl = 1;                 % Antenna gain
 f_c = 2.4e9;            % Center Carrier Frequency
 
-DataL = 1e6;            % Data length in symbols
+DataL = 1;            % Data length in symbols
 R = 40e6;               % Data rate
 
 alpha = 3; % Path Loss exponent
@@ -59,7 +59,7 @@ avg_tx_power = 10^(avg_tx_power_dbm/10);
 noise_psd = 10^(noise_psd_dbm/10);
 
 % Filter params
-Nsym = 6;           % Filter span in symbol durations
+Nsym = 10;           % Filter span in symbol durations
 rrc_beta = 0;         % Roll-off factor
 sampsPerSym = 8;    % Upsampling factor
 
@@ -84,7 +84,10 @@ rctFilt3 = comm.RaisedCosineTransmitFilter(...
   'OutputSamplesPerSymbol', sampsPerSym);
 
 % Upsample and filter.
-TX = step(rctFilt3, [TX_symbols; zeros(Nsym/2,1)]);
+TX = step(rctFilt3, [TX_symbols; zeros(Nsym,1)]);
+
+figure;
+plot(TX);
 
 % Filter group delay, since raised cosine filter is linear phase and
 % symmetric.
@@ -92,6 +95,7 @@ fltDelay = Nsym / (2*R);
 % Correct for propagation delay by removing filter transients
 TX = TX(fltDelay*Fs+1:end);
 time_rf = 1000 * (0: DataL*sampsPerSym - 1) / Fs;
+
 
 TX_Power = sum(TX.^2)/length(TX);
 

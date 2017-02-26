@@ -17,8 +17,8 @@ end
 figure(1)
 clf
 hold all
-plot(real(L_STF))
-plot(imag(L_STF))
+plot(t, real(L_STF))
+plot(t,imag(L_STF))
 
 Phtltf = [1,-1, 1, 1;
           1, 1,-1, 1;

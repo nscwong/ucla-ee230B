@@ -15,13 +15,15 @@
 f_c = 2.4e9;            % Carrier Frequency for 802.11
 bandwidth = 20e6;       % 
 d = 140;                % Distance between TX and RX (m)
-nbits = 20;             % Data length in symbols
+nbits = 4;              % Data length in symbols
 SNR_dB = 2;             % USER-SPECIFIED SNR
 
 % Modulation Parameters
 rrc_beta = 0;
 rrc_nsym = 8;
-rrc_sampspersym = 4;
+% We need 10ns increments at minimum so we can calculate this by
+% 10ns = Ts/rrc_sampspersym where Ts = 1/bandwidth
+rrc_sampspersym = 5; 
 
 % Channel Parameters
 alpha = 3;              % Variable for path gain
@@ -30,6 +32,7 @@ alpha = 3;              % Variable for path gain
 
 % MODULATION
 Payload = randi([0 1], nbits, 1);
+%Payload = [1 1 1 1 1 1 0 0 0 0 0 0 0 0]';
 Payload_syms = 2*Payload - 1; % For testing purposes
 
 rctFilt = comm.RaisedCosineTransmitFilter(...
@@ -39,7 +42,21 @@ rctFilt = comm.RaisedCosineTransmitFilter(...
   'OutputSamplesPerSymbol', rrc_sampspersym);
 %fvtool(rctFilt, 'Analysis', 'impulse')
 
-TX = step(rctFilt, [Payload_syms; zeros(rrc_nsym/2,1)]);
+TX = step(rctFilt, [Payload_syms; zeros(rrc_nsym,1)]);
+
+% Frequency Selective Channel:  Two Ray Model
+% 50 ns difference between two multipaths
+%TX_c = [TX; zeros(50,1)] + [zeros(50,1); TX];
+
+% Frequency Selective Channel:  Four Ray Model
+TX_c = [TX; zeros(200,1)] + [zeros(70,1); TX; zeros(130,1)] + ...
+       [zeros(150,1); TX; zeros(50,1)] + [zeros(200,1); TX];
+
+figure;
+plot(TX, 'LineWidth', 2);
+hold on
+plot(TX_c, '--', 'LineWidth', 2);
+hold off
 
 % CHANNEL
 
@@ -48,7 +65,7 @@ lambda = 3e8/f_c;
 Path_Gain = (lambda/(4*pi))^2 * (1/d)^alpha;
 
 % Shadow Fading
-Shadow_dB = normrnd(0, 1, numel(TX), 1);
+Shadow_dB = normrnd(0, 1, numel(TX_c), 1);
 Shadow = 10.^(Shadow_dB/10);
 
 if nbits > 10e3
@@ -66,7 +83,7 @@ ylabel('Probability Density Function');
 end
 
 % Rayleigh Fading
-ComplexFading = normrnd(0, 1, numel(TX), 1) + 1i.*normrnd(0, 1, numel(TX), 1);
+ComplexFading = normrnd(0, 1, numel(TX_c), 1) + 1i.*normrnd(0, 1, numel(TX_c), 1);
 ComplexFading_abs = abs(ComplexFading);
 ComplexFading_ang = atan2(imag(ComplexFading), real(ComplexFading));
 
@@ -84,7 +101,7 @@ xlabel('Phase of Complex Gaussian (radians)');
 ylabel('Probability Density Function');
 end
 
-RX_1 = TX;
+RX_1 = TX_c;
 RX_2 = RX_1*sqrt(Path_Gain);
 RX_3 = RX_2.*sqrt(Shadow);
 RX_4 = RX_3.*sqrt(abs(ComplexFading));
