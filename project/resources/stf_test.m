@@ -1,12 +1,3 @@
-function tx_packet = create_tx_packet(data, nss, iss)
-% Creates a TX Packet Structure according to the EWC standard
-% 
-% nss - Number of Spatial Streams
-% iss - This spatial stream ID
-%
-% Ignore: Encoder Parser & FEC Encoder
-% Remember: Only the 20 MHz mode will be implemented
-
 % To replace create_tx_packet
 
 % Initial parameters -- copied for convenience
@@ -15,6 +6,8 @@ bandwidth = 20e6;       % Bandwidth
 df = 312.5e3;           % Subcarrier frequency spacing (delta f)
 nbits = 4;              % Data length in symbols
 
+nss = 1;    % Number of spatial streams
+iss = 1;    % This spatial stream ID
 M = 4;      % M-QAM number of modulation points
 data = randi([0 1], 1, 9);  % 1xn vector of data
 
@@ -80,7 +73,7 @@ subframe_htltf1 = zeros(size(t_htltf1));
 for k = -NSR_ht:NSR_ht
     subframe_htltf1 = subframe_htltf1 + ...
                       P_htltf(iss,1)*symmap_htltf(k+NSR_ht+1)*...
-                      exp(2j*pi*k*df*(t_htltf1-2*T_GI-T_iTX_CS_ht(nss,iss)));
+                      exp(2j*pi*k*df*(t_htltf1-2*T_GI-T_iTX_CS_l(nss,iss)));
 end
 subframe_htltf1 = subframe_htltf1/sqrt(Ntone_htltf);
 
@@ -103,7 +96,7 @@ t_htltfs = 0:dt:(T_htltfs-dt);
 subframe_htltfs = zeros(size(t_htltfs));
 for k = -NSR_ht:NSR_ht
     subframe_htltfs = subframe_htltfs + symmap_htltf(k+NSR_ht+1)*...
-                      exp(2j*pi*k*df*(t_htltfs-2*T_GI-T_iTX_CS_ht(nss,iss)));
+                      exp(2j*pi*k*df*(t_htltfs-2*T_GI-T_iTX_CS_l(nss,iss)));
 end
 subframe_htltfs = subframe_htltfs/sqrt(Ntone_htltf);
 
@@ -122,10 +115,8 @@ data_mod = qammod(data_i,M);  % Modulated data
 
 % Final Packet
 time = 0:dt:(T_lstf+T_htltf1+3*T_htltfs)-dt;
-tx_packet = [subframe_lstf,subframe_htltf1,subframe_htltf2,subframe_htltf3,subframe_htltf4];
+signal = [subframe_lstf,subframe_htltf1,subframe_htltf2,subframe_htltf3,subframe_htltf4];
 
 % Plot signal
 figure;
-plot(time, real(tx_packet));
-
-end
+plot(time, real(signal));
