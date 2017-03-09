@@ -2,7 +2,7 @@ iss = 1;
 nss = 1;
 tx_packet = create_tx_packet([],iss,nss);
 t_start = 1;
-t_end = 400;
+t_end = 500;
 threshold = 0.5;
 [packet_detected, decision_statistics] = packet_detection(tx_packet, iss, nss, t_start, t_end, threshold);
 
@@ -53,23 +53,23 @@ Ntone_htsig = 56;
 Ntone_htltf = 56;
 Ntone_htdata = 56;
 
-% L-STF -- Page
+% Create 1 period worth of the STF signal
 symmap_lstf = sqrt(0.5)*[0,0,1+1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,0,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0];
 dt = 1/bandwidth;
 t_lstf = 0:dt:(T_lstf-dt);
-t_lstf_compare = (T_lstf-0.8e-6-dt):dt:(T_lstf-dt);
+t_lstf_compare = 0:dt:0.8e-6-dt;
 compare_lstf = zeros(size(t_lstf));
 for k = -NSR_l:NSR_l
     compare_lstf = compare_lstf + symmap_lstf(k+NSR_l+1)*...
                    exp(2j*pi*k*df*(t_lstf-T_iTX_CS_l(nss,iss)));
 end
 compare_lstf = compare_lstf/sqrt(Ntone_lstf);
-compare_lstf = compare_lstf(end-numel(t_lstf_compare):end);
+compare_lstf = compare_lstf(1:numel(t_lstf_compare));
 
-% HT-LTF1 -- Page 26 to 28 of spec
+% Create 1 period worth of the HT-LTF1
 symmap_htltf = [1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,0,1,-1,-1,1,1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,-1,-1,1,-1,1,-1,1,1,1,1,-1,-1];
 t_htltf1 = 0:dt:(T_htltf1-dt);
-t_htltf1_compare = 0:dt:(1.7e-6-dt);
+t_htltf1_compare = 0:dt:(2e-6-dt);
 compare_htltf1 = zeros(size(t_htltf1));
 for k = -NSR_ht:NSR_ht
     compare_htltf1 = compare_htltf1 + ...
@@ -79,12 +79,14 @@ end
 compare_htltf1 = compare_htltf1/sqrt(Ntone_htltf);
 compare_htltf1 = compare_htltf1(1:numel(t_htltf1_compare));
 
-compare_filter = [compare_lstf compare_htltf1];
-c = conv(tx_packet(t_start:t_end), compare_filter);
+c = conv(tx_packet(t_start:t_end), compare_lstf);
 p = sum(abs(compare_filter).^2);
 m = abs(c).^2/p^2;
 figure;
 plot(m(t_start:t_end));
 
+c = conv(tx_packet(t_start:t_end), compare_htltf1);
+p = sum(abs(compare_filter).^2);
+m = abs(c).^2/p^2;
 figure;
-plot(real(compare_filter));
+plot(m(t_start:t_end));

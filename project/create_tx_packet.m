@@ -127,5 +127,6 @@ tx_packet = [subframe_lstf,subframe_htltf1,subframe_htltf2,subframe_htltf3,subfr
 % Plot signal
 figure;
 plot(time, real(tx_packet));
+title('create\_tx\_packet');
 
 end

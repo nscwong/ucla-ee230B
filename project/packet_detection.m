@@ -59,7 +59,7 @@ t_lstf_compare = 0:dt:0.8e-6-dt;
 compare_lstf = zeros(size(t_lstf));
 for k = -NSR_l:NSR_l
     compare_lstf = compare_lstf + symmap_lstf(k+NSR_l+1)*...
-                    exp(2j*pi*k*df*(t_lstf-T_iTX_CS_l(nss,iss)));
+                   exp(2j*pi*k*df*(t_lstf-T_iTX_CS_l(nss,iss)));
 end
 compare_lstf = compare_lstf/sqrt(Ntone_lstf);
 compare_lstf = compare_lstf(1:numel(t_lstf_compare));
@@ -77,8 +77,6 @@ compare_lstf = compare_lstf(1:numel(t_lstf_compare));
 c_2 = conv(tx_packet(t_start:t_end), compare_lstf);
 p_2 = sum(abs(compare_lstf).^2);
 m_2 = abs(c_2).^2/p_2^2;
-figure;
-plot(m_2(t_start:t_end));
 
 % Option 3: Periodicity Attempt
 % https://www.mathworks.com/help/wlan/ref/wlanpacketdetect.html#bvaykqk
@@ -99,3 +97,7 @@ if (npeaks > PEAKS_NEEDED) & (distance < PERIOD_LIMIT*numel(t_lstf))
     packet_detected = 1;
 end
 decision_statistics = m(t_start:t_end);
+
+figure;
+plot(decision_statistics);
+title('packet\_detection');
