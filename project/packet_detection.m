@@ -74,7 +74,8 @@ compare_lstf = compare_lstf(1:numel(t_lstf_compare));
 % plot(m_1);
 
 % Option 2: Convolution Attempt
-c_2 = conv(tx_packet(t_start:t_end), compare_lstf);
+%c_2 = conv(tx_packet(t_start:t_end), compare_lstf, 'same');
+c_2 = filter(fliplr(conj(compare_lstf)),1,tx_packet(t_start:t_end));
 p_2 = sum(abs(compare_lstf).^2);
 m_2 = abs(c_2).^2/p_2^2;
 
@@ -96,8 +97,8 @@ distance = find(m > threshold, 2);
 if (npeaks > PEAKS_NEEDED) & (distance < PERIOD_LIMIT*numel(t_lstf))
     packet_detected = 1;
 end
-decision_statistics = m(t_start:t_end);
+decision_statistics = m;
 
 figure;
-plot(decision_statistics);
+plot(decision_statistics(numel(t_lstf_compare):end));
 title('packet\_detection');
