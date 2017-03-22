@@ -1,3 +1,5 @@
+% Vaguely based on this link:
+% http://www.eetimes.com/document.asp?doc_id=1275662&page_number=2
 close all
 d = 100;
 SNR_dB = 20.0;
