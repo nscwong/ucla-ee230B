@@ -22,8 +22,6 @@ freq_offset_sig = exp(2j*pi*freq_offset_hz/Fs*(1:length(packet)));
 % Add freq offset to packet signal
 packet = packet.*freq_offset_sig;
 
-%% AGC added below
-
 %% Input Parameters
 
 sig_in = packet; % Input signal to Coarse Freq Detector
@@ -58,6 +56,11 @@ total_freq_offset_est_hz = coarse_freq_offset_est_hz+fine_freq_offset_est_hz;
 total_freq_offset_est_ppm = total_freq_offset_est_hz/Fc*1e6;
 
 disp(['Total Freq Offset Est (ppm): ', num2str(total_freq_offset_est_ppm)]);
+
+% Total frequency correction
+freq_offset_est_sig = exp(-2j*pi*total_freq_offset_est_hz/Fs*(1:length(packet)));
+sig_out = sig_in.*freq_offset_est_sig;
+
 % %loop index
 % ind = 2; % starting at 2 because first sample is weird
 % % Coarse Freq Detection Loop
