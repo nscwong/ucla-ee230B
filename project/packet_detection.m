@@ -1,4 +1,4 @@
-function [packet_detected, decision_statistics] = packet_detection(tx_packet, iss, nss, t_start, t_end, threshold)
+function [packet_detected, decision_statistics_1, decision_statistics_2] = packet_detection(tx_packet, iss, nss, t_start, t_end, threshold)
 % Packet Detection Function
 % 
 % Outputs:
@@ -66,39 +66,28 @@ compare_lstf = compare_lstf(1:numel(t_lstf_compare));
 % figure;
 % plot(t_lstf_compare, compare_lstf);
 
-% Option 1: Correlation Attempt
-% c_1 = xcorr(tx_packet(t_start:t_end),compare_lstf);
-% p_1 = sum(abs(compare_lstf).^2);
-% m_1 = abs(c_1).^2/p_1^2;
-% figure;
-% plot(m_1);
+% Run through a matched filter
+c = filter(fliplr(conj(compare_lstf)),1,tx_packet(t_start:t_end));
+p = sum(abs(compare_lstf).^2);
+m = abs(c).^2/p^2;
 
-% Option 2: Convolution Attempt
-%c_2 = conv(tx_packet(t_start:t_end), compare_lstf, 'same');
-c_2 = filter(fliplr(conj(compare_lstf)),1,tx_packet(t_start:t_end));
-p_2 = sum(abs(compare_lstf).^2);
-m_2 = abs(c_2).^2/p_2^2;
+% Run through an autocorrelation
+c2 = xcorr((tx_packet(t_start-16:t_end-16)), tx_packet(t_start:t_end));
+p2 = sum(abs(tx_packet(t_start-16:t_end-16)).^2);
+m2 = abs(c2).^2/p2^2;
 
-% Option 3: Periodicity Attempt
-% https://www.mathworks.com/help/wlan/ref/wlanpacketdetect.html#bvaykqk
-% period = 0:dt:0.8e-6;
-% if t_start > numel(period)
-%     c_3 = xcorr(tx_packet(t_start:t_end-1), tx_packet(t_start-numel(period):t_start-1));
-%     p_3 = sum(abs(tx_packet(t_start-numel(period):t_start-1)).^2);
-%     m_3 = abs(c_3).^2/p_3^2;
-%     figure;
-%     plot(m_3);
-% end
-
-m = m_2;
 % Count the number of peaks and the respective distances
-npeaks = sum(m > threshold);
-distance = find(m > threshold, 2);
-if (npeaks > PEAKS_NEEDED) & (distance < PERIOD_LIMIT*numel(t_lstf))
-    packet_detected = 1;
+npeaks = sum(m > 0.11);
+if (npeaks > 0)
+    fprintf('npeaks=%d\n',npeaks);
+    npeaks2 = sum(m2 > threshold);
+    if (npeaks2 > 0)
+        packet_detected = 1;
+    end
 end
-decision_statistics = m;
+decision_statistics_1 = m;
+decision_statistics_2 = m2;
 
-figure;
-plot(decision_statistics(numel(t_lstf_compare):end));
-title('packet\_detection');
+% figure;
+% plot(decision_statistics(numel(t_lstf_compare):end));
+% title('packet\_detection');

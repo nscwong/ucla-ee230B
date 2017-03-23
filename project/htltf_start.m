@@ -90,7 +90,8 @@ c = filter(compare_filter,1,tx_packet(t_start:t_end));
 p = sum(abs(compare_filter).^2);
 m = abs(c).^2/p^2;
 figure;
-plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
+%plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
+plot(m)
 title('HT-LTF Start');
 
 decision_statistics = m;

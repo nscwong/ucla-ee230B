@@ -22,9 +22,22 @@ Shadow_dB = normrnd(0, 1);
 Shadow = 10.^(Shadow_dB/10);
 
 % Create Rayleigh Fading parameter - one value per multipath component
-Complex_Fading = normrnd(0, 1, nmultipath, 1) ...
-               + 1i.*normrnd(0, 1, nmultipath, 1);
-
+C = normrnd(0, 1, nmultipath, 1) + 1i.*normrnd(0, 1, nmultipath, 1);
+Fs = 5e6;
+half_shift = floor(length(C)/2);
+C_fft_shift = circshift(fft(C)/length(C),-half_shift);
+% fft frequency list (X-axis)
+Freqs = 0:(length(C)-1);
+Freqs = Freqs - half_shift;
+Freqs = Freqs*Fs/length(C);
+Fdoppler = 10; % Maximum doppler frequency
+% Calculate PSD
+PSD = 2/(pi*Fdoppler)./sqrt(1-(Freqs/Fdoppler).^2);
+PSD(abs(Freqs)>=Fdoppler) = 0; % Zero out PSD outside of valid range
+C_fft_shift_filtered = C_fft_shift.*sqrt(PSD'); %Apply filter
+C_filtered = ifft(circshift(C_fft_shift_filtered,half_shift));
+Complex_Fading = C_filtered;
+           
 % Create Noise component
 Signal = zeros(size(tx_packet));
 for k = 1:nmultipath
@@ -42,6 +55,7 @@ else
     noise_sigma = sqrt(N0/2);
     Noise = noise_sigma*(randn(1,numel(Signal)) + 1j*randn(1,numel(Signal)));
 end
+ExtraNoise = noise_sigma*(randn(1,300) + 1j*randn(1,300));
 
 sig_0 = zeros(size(tx_packet)); % Only multipath
 sig_1 = sig_0;                  % Add path gain
@@ -63,27 +77,35 @@ for k = 1:nmultipath
 end
 
 packet = sig_4;
+packet = [ExtraNoise sig_4];
 
-time_x = 0:dt:(numel(tx_packet)*dt-dt);
+% time_x = 0:dt:(numel(tx_packet)*dt-dt);
 
+% figure;
+% plot(time_x, real(sig_1));
+% hold on
+% plot(time_x, real(sig_2));
+% plot(time_x, real(sig_3));
+% plot(time_x, real(sig_4));
+% hold off
+% title('Packet in Channel (Real)');
+% legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
+% 
+% figure;
+% plot(time_x, imag(sig_1));
+% hold on
+% plot(time_x, imag(sig_2));
+% plot(time_x, imag(sig_3));
+% plot(time_x, imag(sig_4));
+% hold off
+% title('Packet in Channel (Imaginary)');
+% legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
+
+time_xmore = 0:dt:(numel(packet)*dt-dt);
 figure;
-plot(time_x, real(sig_1));
+plot(real(packet));
 hold on
-plot(time_x, real(sig_2));
-plot(time_x, real(sig_3));
-plot(time_x, real(sig_4));
+plot(imag(packet));
 hold off
-title('Packet in Channel (Real)');
-legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
-
-figure;
-plot(time_x, imag(sig_1));
-hold on
-plot(time_x, imag(sig_2));
-plot(time_x, imag(sig_3));
-plot(time_x, imag(sig_4));
-hold off
-title('Packet in Channel (Imaginary)');
-legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
 
 end

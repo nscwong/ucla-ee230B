@@ -38,6 +38,7 @@ LTF1_sym2_fft = fft(LTF1_sym2);
 % [0,1,2,3,...,28,_29,_30,_31,_32,_-31,_30,_-29,-28,-27,...-3,-2,-1]
 % to line up with output of fft
 expected_LTF1 = [0,1,-1,-1,1,1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,-1,-1,1,-1,1,-1,1,1,1,1,-1,-1,0,0,0,0,0,0,0,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1];
+expected_LTF1 = expected_LTF1/sqrt(56);
 
 % Based on Handout: supl 7 ofdm synch, page 34
 channel = 0.5*(LTF1_sym1_fft+LTF1_sym2_fft).*conj(expected_LTF1);
