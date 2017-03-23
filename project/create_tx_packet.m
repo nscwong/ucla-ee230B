@@ -67,6 +67,7 @@ Ntone_htsig = 56;
 Ntone_htltf = 56;
 Ntone_htdata = 56;
 
+% Set up preambles for each of the spatial streams
 for iss = 1:nss
 
     % L-STF -- Page
@@ -109,7 +110,7 @@ for iss = 1:nss
     subframe_htltfs = zeros(size(t_htltfs));
     for k = -NSR_ht:NSR_ht
         subframe_htltfs = subframe_htltfs + symmap_htltf(k+NSR_ht+1)*...
-                          exp(2j*pi*k*df*(t_htltfs-2*T_GI-T_iTX_CS_ht(nss,iss)));
+                          exp(2j*pi*k*df*(t_htltfs-T_GI-T_iTX_CS_ht(nss,iss)));
     end
     subframe_htltfs = subframe_htltfs/sqrt(Ntone_htltf);
 
