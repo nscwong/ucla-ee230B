@@ -4,6 +4,9 @@ function packet = create_channel_model(tx_packet, powers_dB, delays, d, SNR_dB)
 % d - Distance between TX and RX (m)
 % SNR_dB - USER-SPECIFIED SNR
 
+% packet = tx_packet;
+% end
+
 RAYLEIGH_MATLAB = 1;
 
 % Initialization Parameters
@@ -72,8 +75,8 @@ for k = 1:nmultipath
     sig_2 = sig_2 + mp;
     if RAYLEIGH_MATLAB
         mp = filter(Rayleigh_Channel{k},mp);
-        figure;
-        plot(Rayleigh_Channel{k});
+%         figure;
+%         plot(Rayleigh_Channel{k});
     else
         mp = mp*Complex_Fading(k);
     end
@@ -111,7 +114,7 @@ if nmultipath > 1
     ExtraNoise = sum(ExtraNoise);
 end
 
-packet = sig_4;
+% packet = sig_4;
 packet = [ExtraNoise sig_4];
 
 time_x = 0:dt:(numel(tx_packet)*dt-dt);

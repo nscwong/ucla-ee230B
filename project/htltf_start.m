@@ -1,5 +1,5 @@
 % IN PROGRESS
-function [packet_detected, decision_statistics] = htltf_start(tx_packet, iss, nss, t_start, t_end)
+function [start_point, decision_statistics] = htltf_start(tx_packet, iss, nss, t_start, t_end)
 
 % Initial parameters -- copied for convenience
 f_c = 2.4e9;            % Carrier Frequency for 802.11
@@ -51,7 +51,7 @@ Ntone_htdata = 56;
 symmap_lstf = sqrt(0.5)*[0,0,1+1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,0,0,0,0,-1-1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0,0,1+1j,0,0];
 dt = 1/bandwidth;
 t_lstf = 0:dt:(T_lstf-dt);
-t_lstf_compare = 0:dt:0.8e-6-dt;
+t_lstf_compare = 0:dt:4e-6-dt;
 %t_lstf_compare = 0;
 compare_lstf = zeros(size(t_lstf));
 for k = -NSR_l:NSR_l
@@ -65,7 +65,7 @@ compare_lstf = compare_lstf(end-numel(t_lstf_compare)+1:end);
 % Create 1 period worth of the HT-LTF1
 symmap_htltf = [1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,0,1,-1,-1,1,1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,-1,-1,1,-1,1,-1,1,1,1,1,-1,-1];
 t_htltf1 = 0:dt:(T_htltf1-dt);
-t_htltf1_compare = 0:dt:(0.8e-6-dt);
+t_htltf1_compare = 0:dt:(4e-6-dt);
 compare_htltf1 = zeros(size(t_htltf1));
 for k = -NSR_ht:NSR_ht
     compare_htltf1 = compare_htltf1 + ...
@@ -87,16 +87,25 @@ compare_htltf1 = compare_htltf1(1:numel(t_htltf1_compare));
 % figure;
 % plot(m_h(numel(t_htltf1_compare)+numel(t_lstf):end));
 
+%compare_filter = fliplr(conj([compare_lstf compare_htltf1]));
 compare_filter = fliplr(conj([compare_lstf compare_htltf1]));
 c = filter(compare_filter,1,tx_packet(t_start:t_end));
 p = sum(abs(compare_filter).^2);
+% p = sum(abs(tx_packet(t_start:t_end)).^2);
+% p(isnan(p)) = 1;
 m = abs(c).^2/p^2;
 figure;
-plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
-%plot(m)
+%plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
+plot(m)
 title('HT-LTF Start');
 
+figure;
+plot(real(compare_filter));
+hold on
+plot(imag(compare_filter));
+hold off
+
 decision_statistics = m;
-packet_detected = 0;
+start_point = 0;
 
 end
