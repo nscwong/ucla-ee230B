@@ -186,10 +186,13 @@ for n = 0:N_syms-1
     iss = 1+mod(iss,nss);
 end
 
-
-% FIXME:  Fix Data Packet
-
-% Final Packet
+% pad packets with zeros so all spatial streams are equal length
+while iss <= nss
+    tx_packets{iss} = horzcat(tx_packets{iss},zeros(size(t_sym))); 
+    
+    % Increment spatial stream
+    iss = iss + 1;
+end
 
 % Plot first signal
 % figure;
