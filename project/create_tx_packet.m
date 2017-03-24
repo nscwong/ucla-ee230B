@@ -1,4 +1,4 @@
-function tx_packets = create_tx_packet(data, nss)
+function tx_packets = create_tx_packet(data, nss, M)
 % Creates a TX Packet Structure according to the EWC standard
 % 
 % nss - Number of Spatial Streams
@@ -34,7 +34,7 @@ dt = 1/bandwidth;       % Sample Period
 df = 312.5e3;           % Subcarrier frequency spacing (delta f)
 nbits = 4;              % Data length in symbols
 
-M = 4;      % M-QAM number of modulation points
+% M = 4;      % M-QAM number of modulation points
 % data = randi([0 1], 1, 9);  % 1xn vector of data
 
 nfft = 64;
@@ -183,7 +183,7 @@ for n = 0:N_syms-1
     tx_packets{iss} = horzcat(tx_packets{iss},data_sym);
     
     % Increment spatial stream
-    iss = mod(iss+1,nss);
+    iss = 1+mod(iss+1,nss);
 end
 
 
