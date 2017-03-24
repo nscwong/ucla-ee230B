@@ -1,11 +1,11 @@
 close all
-
+clear all
 d = 100;
-SNR_dB = 500.0;
-amplitudes = [0];
-delays = [0];
-% amplitudes = [0, 0];
-% delays = [0, 50e-9];
+SNR_dB = 5000.0;
+% amplitudes = [0];
+% delays = [0];
+amplitudes = [0, 0];
+delays = [0, 50e-9];
 
 % 0.25 KByte packet paylaod
 bits_per_kB = 1024*8;
@@ -13,26 +13,32 @@ num_bits = round(10*0.25*bits_per_kB);
 % num_bits = 200;
 
 data_bits = randi([0 1], 1,num_bits);  % 1xn vector of data
-M = 4; % M-QAM
+M = 64; % M-QAM
 
 nss = 2; % Number of spatial streams
 n_rx = nss;
 tx_packets = create_tx_packet(data_bits, nss, M);
 
 packet11 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
+
+if nss >= 2
 packet12 = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
 packet21 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
 packet22 = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
+end
 
 rx_packets = cell(nss,1);
+if nss == 1
+rx_packets{1} = packet11;
+elseif nss == 2
 rx_packets{1} = packet11+packet12;
 rx_packets{2} = packet21+packet22;
-
-% rx_packets{1} = packet11;
+end
 
 %%
+noise_offset = 299;
 
-datasym1_start_ind = 300+561; % Start after LTF4
+datasym1_start_ind = noise_offset+561; % Start after LTF4
 GI_len = 16; % Guard Interval length in samples
 fft_len = 64; % Number of samples in fft period
 sym_len = fft_len+GI_len; % Number of samples in symbol
@@ -43,7 +49,7 @@ N_syms = ceil(num_bits/N_dbps); % Number of symbols
 
 %% CHANNEL ESTIMATION
 
-LTF1_start_ind = 300+161; % start of LTF1
+LTF1_start_ind = noise_offset+161; % start of LTF1
 MIMO_LTF_start_ind = LTF1_start_ind + sym_len*2; % LTF2 starts after LTF1
 
 % Polarity matrix -- Page 27 and 28 of spec
@@ -83,12 +89,12 @@ for i_rx = 1:n_rx
     sig = rx_packets{i_rx};
     
     % Extract the two LTF1 symbols
-    LTF1_sym1 = sig(LTF1_start_ind + 2*GI_samples           : LTF1_start_ind + 2*GI_samples +   fft_len - 1);
-    LTF1_sym2 = sig(LTF1_start_ind + 2*GI_samples + fft_len : LTF1_start_ind + 2*GI_samples + 2*fft_len - 1);
+    LTF1_sym1 = sig(LTF1_start_ind + 2*GI_len           : LTF1_start_ind + 2*GI_len +   fft_len - 1);
+    LTF1_sym2 = sig(LTF1_start_ind + 2*GI_len + fft_len : LTF1_start_ind + 2*GI_len + 2*fft_len - 1);
     
-    LTF2_sym = sig(MIMO_LTF_start_ind +             GI_samples : MIMO_LTF_start_ind +             GI_samples + fft_len - 1);
-    LTF3_sym = sig(MIMO_LTF_start_ind +   sym_len + GI_samples : MIMO_LTF_start_ind +   sym_len + GI_samples + fft_len - 1);
-    LTF4_sym = sig(MIMO_LTF_start_ind + 2*sym_len + GI_samples : MIMO_LTF_start_ind + 2*sym_len + GI_samples + fft_len - 1);
+    LTF2_sym = sig(MIMO_LTF_start_ind +             GI_len : MIMO_LTF_start_ind +             GI_len + fft_len - 1);
+    LTF3_sym = sig(MIMO_LTF_start_ind +   sym_len + GI_len : MIMO_LTF_start_ind +   sym_len + GI_len + fft_len - 1);
+    LTF4_sym = sig(MIMO_LTF_start_ind + 2*sym_len + GI_len : MIMO_LTF_start_ind + 2*sym_len + GI_len + fft_len - 1);
     
     LTF1_sym1_fft = fft(LTF1_sym1)/fft_len;
     LTF1_sym2_fft = fft(LTF1_sym2)/fft_len;
@@ -132,18 +138,16 @@ end
 % Initialize array to store demodulated data
 bits_out = zeros(1,N_syms*N_dbps);
 
+sym_hist = []
+
 % Data extraction loop
 for sym_i = 0:nss:N_syms-1
     stream_Yks = zeros(nss,NSD_ht);
     stream_Xks = zeros(nss,NSD_ht);
     % Get symbol from each spatial stream
     for iss = 1:nss
-        curr_sym = sym_i + (iss -1); % current symbol number
-        if curr_sym >= N_syms
-            % No more symbols left
-            break;
-        end
-            
+        % Need to extract all, even if no data
+        
         sig = rx_packets{iss}; % select spatial stream signal
         
         sym_i_adj = floor(sym_i/nss); %symbol in this spatial stream
@@ -163,10 +167,18 @@ for sym_i = 0:nss:N_syms-1
     % Bit extraction
     for iss = 1:nss        
         curr_sym = sym_i + (iss -1); % current symbol number
+        if curr_sym >= N_syms
+            % No more symbols left
+            break;
+        end
+        
         % scaled for qam demod
         qam_mod_syms_scaled = stream_Xks(iss,:)*sqrt(Ntone_htdata)/K_mod; 
+                
+        sym_hist = horzcat(sym_hist,qam_mod_syms_scaled);
+        
         % QAM demodulation
-        qam_syms = qamdemod(qam_mod_syms_scaled,M);
+        qam_syms = qamdemod(qam_mod_syms_scaled,M);     
         % Correct bit order
         a = fliplr(de2bi(qam_syms));
         % Reshape into vector
@@ -188,27 +200,27 @@ data_i = (2.^((log2(M)-1):-1:0))*data_i;
 data_i_out = reshape(bits_out,log2(M),numel(bits_out)/log2(M));    % Change to int
 data_i_out = (2.^((log2(M)-1):-1:0))*data_i_out;
 
-figure
-clf
-subplot(3,1,1)
-hold all
-plot(data_i,'ro-');
-plot(data_i_out(1:length(data_i)),'b.-')
-% ylim([-0.1 1.1]);
-subplot(3,1,2)
-hold all
-plot(data_i,'ro-');
-subplot(3,1,3)
-% ylim([-0.1 1.1]);
-hold all
-plot(data_i_out(1:length(data_i)),'b.-')
-% ylim([-0.1 1.1]);
-
 % figure
 % clf
+% subplot(3,1,1)
 % hold all
-% plot(real(datasym_fft),'.-');
-% plot(imag(datasym_fft),'.-');
+% plot(data_i,'ro-');
+% plot(data_i_out(1:length(data_i)),'b.-')
+% % ylim([-0.1 1.1]);
+% subplot(3,1,2)
+% hold all
+% plot(data_i,'ro-');
+% subplot(3,1,3)
+% % ylim([-0.1 1.1]);
+% hold all
+% plot(data_i_out(1:length(data_i)),'b.-')
+% % ylim([-0.1 1.1]);
+
+figure
+clf
+hold all
+plot(real(sym_hist),imag(sym_hist),'o');
+% plot(,'.-');
 
 % plot(real(datasym_fft),'.-')
 % plot(imag(datasym_fft),'.-')
