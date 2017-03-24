@@ -77,7 +77,7 @@ p2 = sum(abs(tx_packet(t_start-16:t_end-16)).^2);
 m2 = abs(c2).^2/p2^2;
 
 % Count the number of peaks and the respective distances
-npeaks = sum(m > 0.11);
+npeaks = sum(m > 0.15);
 if (npeaks > 0)
     fprintf('npeaks=%d\n',npeaks);
     npeaks2 = sum(m2 > threshold);

@@ -31,7 +31,7 @@ rx_packets{1} = packet11;
 
 % Input signal is rx_packets
 
-LTF1_start_ind = 161; % start of LTF1
+LTF1_start_ind = 300+161; % start of LTF1
 
 %% Additional useful variables
 

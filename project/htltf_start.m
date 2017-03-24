@@ -52,6 +52,7 @@ symmap_lstf = sqrt(0.5)*[0,0,1+1j,0,0,0,-1-1j,0,0,0,1+1j,0,0,0,-1-1j,0,0,0,-1-1j
 dt = 1/bandwidth;
 t_lstf = 0:dt:(T_lstf-dt);
 t_lstf_compare = 0:dt:0.8e-6-dt;
+%t_lstf_compare = 0;
 compare_lstf = zeros(size(t_lstf));
 for k = -NSR_l:NSR_l
     compare_lstf = compare_lstf + symmap_lstf(k+NSR_l+1)*...
@@ -59,6 +60,7 @@ for k = -NSR_l:NSR_l
 end
 compare_lstf = compare_lstf/sqrt(Ntone_lstf);
 compare_lstf = compare_lstf(end-numel(t_lstf_compare)+1:end);
+%compare_lstf = [];
 
 % Create 1 period worth of the HT-LTF1
 symmap_htltf = [1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,1,1,-1,-1,1,1,-1,1,-1,1,1,1,1,0,1,-1,-1,1,1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,-1,-1,1,-1,1,-1,1,1,1,1,-1,-1];
@@ -90,8 +92,8 @@ c = filter(compare_filter,1,tx_packet(t_start:t_end));
 p = sum(abs(compare_filter).^2);
 m = abs(c).^2/p^2;
 figure;
-%plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
-plot(m)
+plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
+%plot(m)
 title('HT-LTF Start');
 
 decision_statistics = m;

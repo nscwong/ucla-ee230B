@@ -1,8 +1,8 @@
 % This is a Rayleigh Distribution (We'll probably need it later)
 
-t = 1e7; % Random value?
+t = 1e5; % Random value?
 
-C = normrnd(0, 1, t, 1) + 1i.*normrnd(0, 1, t, 1); % Is this log-normal?
+C = normrnd(0, 1, t, 1) + 1i.*normrnd(0, 1, t, 1); 
 C_abs = abs(C);
 C_ang = atan2(imag(C), real(C));
 
@@ -18,7 +18,7 @@ C_ang = atan2(imag(C), real(C));
 % xlabel('Phase of Complex Gaussian (radians)');
 % ylabel('Probability Density Function');
 
-Fs = 5e6;
+Fs = 20e6;
 half_shift = floor(length(C)/2);
 C_fft_shift = circshift(fft(C)/length(C),-half_shift);
 
@@ -33,7 +33,7 @@ plot(Freqs,10*log10(abs(C_fft_shift)),'.')
 % figure(2)
 % pwelch(C,[],[],[],Fs);
 
-Fdoppler = 200; % Maximum doppler frequency
+Fdoppler = 100; % Maximum doppler frequency
 
 % Calculate PSD
 PSD = 2/(pi*Fdoppler)./sqrt(1-(Freqs/Fdoppler).^2);
