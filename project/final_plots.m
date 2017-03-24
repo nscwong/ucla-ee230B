@@ -9,7 +9,7 @@ delays = [0, 50e-9];
 
 % 0.25 KByte packet paylaod
 bits_per_kB = 1024*8;
-num_bits = round(10*0.25*bits_per_kB);
+num_bits = round(0.25*bits_per_kB);
 % num_bits = 200;
 
 data_bits = randi([0 1], 1,num_bits);  % 1xn vector of data
@@ -17,22 +17,28 @@ M = 64; % M-QAM
 
 nss = 2; % Number of spatial streams
 n_rx = nss;
+% n_rx = 2;
 tx_packets = create_tx_packet(data_bits, nss, M);
 
 packet11 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
 
-if nss >= 2
+if n_rx == 2 && nss ==1    
+packet21 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
+elseif n_rx == 2 && nss == 2
 packet12 = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
 packet21 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
 packet22 = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
 end
 
 rx_packets = cell(nss,1);
-if nss == 1
+if n_rx == 1 && nss == 1
 rx_packets{1} = packet11;
-elseif nss == 2
+elseif n_rx == 2 && nss == 2
 rx_packets{1} = packet11+packet12;
 rx_packets{2} = packet21+packet22;
+elseif n_rx == 2 && nss == 1
+rx_packets{1} = packet11;
+rx_packets{2} = packet21;
 end
 
 %%
@@ -114,7 +120,7 @@ end
 % Only look at NSD_ht subcarriers
 for k = 1:NSD_ht
     H_est(:,:,k) = Y(:,:,k)*P.'/4/expected_LTF(data_inds(k));
-    H_inv_est(:,:,k) = inv(H_est(:,:,k));
+    H_inv_est(:,:,k) = pinv(H_est(:,:,k));
 end
 
 
@@ -142,13 +148,13 @@ sym_hist = []
 
 % Data extraction loop
 for sym_i = 0:nss:N_syms-1
-    stream_Yks = zeros(nss,NSD_ht);
+    stream_Yks = zeros(n_rx,NSD_ht);
     stream_Xks = zeros(nss,NSD_ht);
     % Get symbol from each spatial stream
-    for iss = 1:nss
+    for i_rx = 1:n_rx
         % Need to extract all, even if no data
         
-        sig = rx_packets{iss}; % select spatial stream signal
+        sig = rx_packets{i_rx}; % select spatial stream signal
         
         sym_i_adj = floor(sym_i/nss); %symbol in this spatial stream
         
@@ -156,7 +162,7 @@ for sym_i = 0:nss:N_syms-1
         datasym = sig(datasym1_start_ind + sym_i_adj*sym_len + GI_len : datasym1_start_ind + sym_i_adj*sym_len + GI_len +   fft_len - 1);
         % Extract subcarrier components
         datasym_fft = fft(datasym)/fft_len;
-        stream_Yks(iss,:) = datasym_fft(data_inds); % Extract and store Yks
+        stream_Yks(i_rx,:) = datasym_fft(data_inds); % Extract and store Yks
     end
     
     % Channel Correction
