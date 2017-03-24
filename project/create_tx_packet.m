@@ -183,7 +183,7 @@ for n = 0:N_syms-1
     tx_packets{iss} = horzcat(tx_packets{iss},data_sym);
     
     % Increment spatial stream
-    iss = 1+mod(iss+1,nss);
+    iss = 1+mod(iss,nss);
 end
 
 
