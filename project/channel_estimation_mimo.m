@@ -8,12 +8,14 @@ SNR_dB = 100.0;
 amplitudes = [0, 0];
 delays = [0, 50e-9];
 
+M = 4;
+
 Fs = 20e6; % Sample Frequency
 Fc = 2.4e9; % Carrier Frequency
 iss = 1;
 nss = 1;
 n_rx = nss;
-tx_packets = create_tx_packet([],nss);
+tx_packets = create_tx_packet([0],nss,M);
 
 packet11 = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
 % packet12 = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
@@ -37,10 +39,10 @@ LTF1_start_ind = 300+161; % start of LTF1
 
 GI_samples = 16; % Guard Interval length in samples
 
-sym_len = 64;
-LTF_len = sym_len + GI_samples;
+fft_len = 64;
+sym_len = fft_len + GI_samples;
 
-MIMO_LTF_start_ind = LTF1_start_ind + LTF_len*2; % LTF2 starts after LTF1
+MIMO_LTF_start_ind = LTF1_start_ind + sym_len*2; % LTF2 starts after LTF1
 
 % Polarity matrix -- Page 27 and 28 of spec
 P_htltf = [ ...     % 
@@ -74,20 +76,20 @@ for i_rx = 1:n_rx
     sig = rx_packets{i_rx};
     
     % Extract the two LTF1 symbols
-    LTF1_sym1 = sig(LTF1_start_ind + 2*GI_samples           : LTF1_start_ind + 2*GI_samples +   sym_len - 1);
-    LTF1_sym2 = sig(LTF1_start_ind + 2*GI_samples + sym_len : LTF1_start_ind + 2*GI_samples + 2*sym_len - 1);
+    LTF1_sym1 = sig(LTF1_start_ind + 2*GI_samples           : LTF1_start_ind + 2*GI_samples +   fft_len - 1);
+    LTF1_sym2 = sig(LTF1_start_ind + 2*GI_samples + fft_len : LTF1_start_ind + 2*GI_samples + 2*fft_len - 1);
     
-    LTF2_sym = sig(MIMO_LTF_start_ind +             GI_samples : MIMO_LTF_start_ind +             GI_samples + sym_len - 1);
-    LTF3_sym = sig(MIMO_LTF_start_ind +   LTF_len + GI_samples : MIMO_LTF_start_ind +   LTF_len + GI_samples + sym_len - 1);
-    LTF4_sym = sig(MIMO_LTF_start_ind + 2*LTF_len + GI_samples : MIMO_LTF_start_ind + 2*LTF_len + GI_samples + sym_len - 1);
+    LTF2_sym = sig(MIMO_LTF_start_ind +             GI_samples : MIMO_LTF_start_ind +             GI_samples + fft_len - 1);
+    LTF3_sym = sig(MIMO_LTF_start_ind +   sym_len + GI_samples : MIMO_LTF_start_ind +   sym_len + GI_samples + fft_len - 1);
+    LTF4_sym = sig(MIMO_LTF_start_ind + 2*sym_len + GI_samples : MIMO_LTF_start_ind + 2*sym_len + GI_samples + fft_len - 1);
     
-    LTF1_sym1_fft = fft(LTF1_sym1);
-    LTF1_sym2_fft = fft(LTF1_sym2);
+    LTF1_sym1_fft = fft(LTF1_sym1)/fft_len;
+    LTF1_sym2_fft = fft(LTF1_sym2)/fft_len;
     
     LTF1_sym_fft = 0.5*(LTF1_sym1_fft + LTF1_sym2_fft);
-    LTF2_sym_fft = fft(LTF2_sym);
-    LTF3_sym_fft = fft(LTF3_sym);
-    LTF4_sym_fft = fft(LTF4_sym);
+    LTF2_sym_fft = fft(LTF2_sym)/fft_len;
+    LTF3_sym_fft = fft(LTF3_sym)/fft_len;
+    LTF4_sym_fft = fft(LTF4_sym)/fft_len;
     
     Y(i_rx,1,:) = LTF1_sym_fft;
     Y(i_rx,2,:) = LTF2_sym_fft;
@@ -102,9 +104,10 @@ end
 
 % H_est(H_est==0) = 1;  % handle divide by zeros
 
+% DEPRECATED. Use H_est instead
 % Based on Handout: supl 7 ofdm synch, page 34
 % Only works with 1 spatial stream
-channel = LTF1_sym_fft.*conj(expected_LTF);
+channel = LTF1_sym_fft.*conj(expected_LTF)*56; % magnitude of X_k is 1/56
 % channel(channel==0) = 1; % handle divide by zeros
 
 
