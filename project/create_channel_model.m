@@ -54,6 +54,7 @@ if RAYLEIGH_MATLAB
     Rayleigh_Channel = cell(1,nmultipath);
     for k = 1:nmultipath
         Rayleigh_Channel{k} = rayleighchan(1/bandwidth,Fdoppler);
+        Rayleigh_Channel{k}.StoreHistory = true;
     end
 end
 
@@ -71,6 +72,8 @@ for k = 1:nmultipath
     sig_2 = sig_2 + mp;
     if RAYLEIGH_MATLAB
         mp = filter(Rayleigh_Channel{k},mp);
+        figure;
+        plot(Rayleigh_Channel{k});
     else
         mp = mp*Complex_Fading(k);
     end
@@ -113,24 +116,44 @@ packet = [ExtraNoise sig_4];
 
 time_x = 0:dt:(numel(tx_packet)*dt-dt);
 
+% figure;
+% plot(time_x, real(sig_1));
+% hold on
+% plot(time_x, real(sig_2));
+% plot(time_x, real(sig_3));
+% plot(time_x, real(sig_4));
+% hold off
+% title('Packet in Channel (Real)');
+% legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
+% 
+% figure;
+% plot(time_x, imag(sig_1));
+% hold on
+% plot(time_x, imag(sig_2));
+% plot(time_x, imag(sig_3));
+% plot(time_x, imag(sig_4));
+% hold off
+% title('Packet in Channel (Imaginary)');
+% legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
+
 figure;
-plot(time_x, real(sig_1));
+plot(time_x, abs(sig_1));
 hold on
-plot(time_x, real(sig_2));
-plot(time_x, real(sig_3));
-plot(time_x, real(sig_4));
+plot(time_x, abs(sig_2));
+plot(time_x, abs(sig_3));
+plot(time_x, abs(sig_4));
 hold off
-title('Packet in Channel (Real)');
+title('Packet in Channel (Abs)');
 legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
 
 figure;
-plot(time_x, imag(sig_1));
+plot(time_x, phase(sig_1));
 hold on
-plot(time_x, imag(sig_2));
-plot(time_x, imag(sig_3));
-plot(time_x, imag(sig_4));
+plot(time_x, phase(sig_2));
+plot(time_x, phase(sig_3));
+plot(time_x, phase(sig_4));
 hold off
-title('Packet in Channel (Imaginary)');
+title('Packet in Channel (Abs)');
 legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
 
 % time_xmore = 0:dt:(numel(packet)*dt-dt);

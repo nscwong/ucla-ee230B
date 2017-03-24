@@ -1,7 +1,7 @@
 clear;clc;
 
 d = 50;
-SNR_dB = 15.0;
+SNR_dB = 100.0;
 % amplitudes = [0];
 % delays = [0];
 amplitudes = [0, 0];
