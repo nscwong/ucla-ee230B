@@ -4,6 +4,8 @@ function packet = create_channel_model(tx_packet, powers_dB, delays, d, SNR_dB)
 % d - Distance between TX and RX (m)
 % SNR_dB - USER-SPECIFIED SNR
 
+RAYLEIGH_MATLAB = 1;
+
 % Initialization Parameters
 f_c = 2.4e9;            % Carrier Frequency for 802.11
 bandwidth = 20e6;       %  
@@ -47,12 +49,13 @@ Complex_Fading = ones(nmultipath,numel(tx_packet));
 %     hold off
 % end
 
-% Fdoppler = 10; % Maximum doppler frequency
-% for k = 1:nmultipath
-%     rc = rayleighchan(1/bandwidth,Fdoppler);
-%     y = filter(rc,0:1/20e6:(numel(tx_packet)-1)/20e6);
-%     Complex_Fading(k,:) = y;
-% end
+Fdoppler = 10; % Maximum doppler frequency
+if RAYLEIGH_MATLAB
+    Rayleigh_Channel = cell(1,nmultipath);
+    for k = 1:nmultipath
+        Rayleigh_Channel{k} = rayleighchan(1/bandwidth,Fdoppler);
+    end
+end
 
 sig_0 = zeros(size(tx_packet)); % Only multipath
 sig_1 = sig_0;                  % Add path gain
@@ -66,7 +69,11 @@ for k = 1:nmultipath
     sig_1 = sig_1 + mp;
     mp = mp*Shadow(k);
     sig_2 = sig_2 + mp;
-    mp = mp*Complex_Fading(k);
+    if RAYLEIGH_MATLAB
+        mp = filter(Rayleigh_Channel{k},mp);
+    else
+        mp = mp*Complex_Fading(k);
+    end
     sig_3 = sig_3 + mp;    
 end
 
@@ -75,7 +82,9 @@ Signal = zeros(size(tx_packet));
 for k = 1:nmultipath
     mp = create_multipath(tx_packet, powers(k), delays(k), dt);
     mp = mp*Path_Gain;
-    mp = mp*Complex_Fading(k);
+    if ~RAYLEIGH_MATLAB
+        mp = mp*Complex_Fading(k);
+    end
     Signal = Signal + mp;
 end
 SNR = 10^(SNR_dB/10);                       % Convert to linear
