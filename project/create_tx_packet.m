@@ -152,7 +152,8 @@ end
 N_syms = ceil(numel(data)/N_dbps);
 
 padamt = N_syms*N_dbps - numel(data);    % Number of zeros to pad
-data_bits = [data, zeros(1,padamt)];      % Pad to fit modulation scheme
+junk_pad = randi([0 1], 1,padamt);       % junk data for padding
+data_bits = [data, junk_pad];      % Pad to fit modulation scheme
 data_i = reshape(data_bits,log2(M),numel(data_bits)/log2(M));    % Change to int
 data_i = (2.^((log2(M)-1):-1:0))*data_i;
 data_mod = K_mod*qammod(data_i,M);  % Modulated data {-3,-1,1,3}
@@ -187,11 +188,11 @@ for n = 0:N_syms-1
 end
 
 % pad packets with zeros so all spatial streams are equal length
-while iss <= nss
+while iss ~= 1
     tx_packets{iss} = horzcat(tx_packets{iss},zeros(size(t_sym))); 
     
     % Increment spatial stream
-    iss = iss + 1;
+    iss = 1+mod(iss,nss);
 end
 
 % Plot first signal
