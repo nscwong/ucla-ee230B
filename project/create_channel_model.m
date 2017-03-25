@@ -1,11 +1,15 @@
-function packet = create_channel_model(tx_packet, powers_dB, delays, d, SNR_dB)
+function [packet, packet_no_awgn] = create_channel_model(tx_packet, powers_dB, delays, d, SNR_dB, AWGN_Only, OutputPlots)
 % Channel Model for one packet
 %
 % d - Distance between TX and RX (m)
 % SNR_dB - USER-SPECIFIED SNR
 
-% packet = tx_packet;
-% end
+if nargin < 6
+    AWGN_Only = 0;
+end
+if nargin < 7
+    OutputPlots = 0;
+end
 
 RAYLEIGH_MATLAB = 1;
 
@@ -75,12 +79,13 @@ for k = 1:nmultipath
     sig_2 = sig_2 + mp;
     if RAYLEIGH_MATLAB
         mp = filter(Rayleigh_Channel{k},mp);
-%         figure;
-%         plot(Rayleigh_Channel{k});
     else
         mp = mp*Complex_Fading(k);
     end
     sig_3 = sig_3 + mp;    
+end
+if AWGN_Only
+   sig_3 = sig0; 
 end
 
 % Create Noise component
@@ -109,16 +114,22 @@ end
 
 sig_4 = sig_3 + Noise;  % Add noise
 
-ExtraNoise = noise_sigma*(randn(nmultipath,300) + 1j*randn(nmultipath,300));
+ExtraNoise1 = noise_sigma*(randn(nmultipath,300) + 1j*randn(nmultipath,300));
 if nmultipath > 1
-    ExtraNoise = sum(ExtraNoise);
+    ExtraNoise1 = sum(ExtraNoise1);
+end
+ExtraNoise2 = noise_sigma*(randn(nmultipath,300) + 1j*randn(nmultipath,300));
+if nmultipath > 1
+    ExtraNoise2 = sum(ExtraNoise2);
 end
 
 % packet = sig_4;
-packet = [ExtraNoise sig_4];
+packet = [ExtraNoise1 sig_4 ExtraNoise2];
+packet_no_awgn = [zeros(size(ExtraNoise1)) sig_3 zeros(size(ExtraNoise2))];
 
 time_x = 0:dt:(numel(tx_packet)*dt-dt);
 
+if OutputPlots
 % figure;
 % plot(time_x, real(sig_1));
 % hold on
@@ -165,5 +176,6 @@ legend('Path Gain', '+ Shadowing', '+ Complex Fading', '+ Noise');
 % hold on
 % plot(imag(packet));
 % hold off
+end
 
 end

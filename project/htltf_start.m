@@ -1,5 +1,9 @@
 % IN PROGRESS
-function [start_point, decision_statistics] = htltf_start(tx_packet, iss, nss, t_start, t_end)
+function [start_point, decision_statistics] = htltf_start(tx_packet, iss, nss, t_start, t_end, OutputPlots)
+
+if nargin < 6
+    OutputPlots = 0;
+end
 
 % Initial parameters -- copied for convenience
 f_c = 2.4e9;            % Carrier Frequency for 802.11
@@ -94,18 +98,21 @@ p = sum(abs(compare_filter).^2);
 % p = sum(abs(tx_packet(t_start:t_end)).^2);
 % p(isnan(p)) = 1;
 m = abs(c).^2/p^2;
+
+if OutputPlots
 figure;
-%plot(m(numel(compare_filter)-numel(t_lstf_compare)+numel(t_lstf):end));
 plot(m)
 title('HT-LTF Start');
+end
 
-figure;
-plot(real(compare_filter));
-hold on
-plot(imag(compare_filter));
-hold off
+% figure;
+% plot(real(compare_filter));
+% hold on
+% plot(imag(compare_filter));
+% hold off
 
 decision_statistics = m;
-start_point = 0;
+[~,start_point] = max(m);
+start_point = start_point - numel(t_htltf1_compare) + t_start - 1;
 
 end

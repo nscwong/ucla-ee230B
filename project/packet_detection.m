@@ -79,7 +79,7 @@ m2 = abs(c2).^2/p2^2;
 % Count the number of peaks and the respective distances
 npeaks = sum(m > 0.15);
 if (npeaks > 0)
-    fprintf('npeaks=%d\n',npeaks);
+    %fprintf('npeaks=%d\n',npeaks);
     npeaks2 = sum(m2 > threshold);
     if (npeaks2 > 0)
         packet_detected = 1;
