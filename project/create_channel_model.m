@@ -85,7 +85,7 @@ for k = 1:nmultipath
     sig_3 = sig_3 + mp;    
 end
 if AWGN_Only
-   sig_3 = sig0; 
+   sig_3 = sig_1; 
 end
 
 % Create Noise component

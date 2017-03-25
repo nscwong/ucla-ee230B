@@ -1,29 +1,54 @@
 close all
 clear;clc;
 
-num_trials = 50;
+num_trials = 75;
 Fc = 2.4e9; % Carrier Frequency
 
+AWGN_Only_Channel = 0; % Rayleigh if 0
 Ideal_AGC = 1;
 Ideal_BBD = 1;
 Ideal_Channel_Estimation = 1; % No AWGN Noise
 Ideal_Frequency_Estimation = 1;
 
-OutputFreqs = 1;
-
+OutputFreqs = 0;
 d = 50;
-SNR_dB = 50.0;
-%amplitudes = [0];
-%delays = [0];
+SNR_Values = 0:5:30;
+amplitudes = [0];
+delays = [0];
 % amplitudes = [0, 0];
 % delays = [0, 50e-9];
-amplitudes = [0, -3, -6, -10];
-delays = [0, 70e-9, 150e-9, 200e-9];
+%amplitudes = [0, -3, -6, -10];
+%delays = [0, 70e-9, 150e-9, 200e-9];
 freq_offset_ppm = 10; %50; 
 M = 64;
+
+% Create Filename
+if AWGN_Only_Channel
+    matname = 'awgn_channel';
+else
+    matname = 'rayleigh_channel';
+end
+if Ideal_AGC && Ideal_BBD && Ideal_Channel_Estimation && Ideal_Frequency_Estimation
+    matname = [matname '_ideal'];
+else
+    matname = [matname '_nonideal'];
+end
+if ~Ideal_AGC
+    matname = [matname '_agc'];
+end
+if ~Ideal_BBD
+    matname = [matname '_bbd'];
+end
+if ~Ideal_Channel_Estimation
+    matname = [matname '_chanest'];
+end
+if ~Ideal_Frequency_Estimation
+    matname = [matname '_freqest'];
+end
+matname = [matname '.mat'];
+
 bits_per_kB = 1024*8;
 num_bits = round(0.25*bits_per_kB);
-
 
 bandwidth = 20e6;
 iss = 1;
@@ -34,8 +59,19 @@ if Ideal_Frequency_Estimation
     freq_offset_ppm = 0;
 end
 
+SNR_ErrorRates = zeros(numel(SNR_Values), 1);
+SNR_ErrorCounts = zeros(numel(SNR_Values), num_trials);
+SNR_DroppedPackets = zeros(numel(SNR_Values), 1);
+SNR_MissedHTLTFStarts = zeros(numel(SNR_Values), num_trials);
+
+for snr_idx = 1:numel(SNR_Values)
+SNR_dB = SNR_Values(snr_idx);
 total_error_count = 0;
 error_count_hist = zeros(num_trials,1);
+
+dropped_packets = 0;
+missed_htltf_starts = 0;
+
 for trial = 1:num_trials
 disp(['Trial: ', num2str(trial)]);
 
@@ -51,26 +87,14 @@ for iss = 1:nss
     tx_packets{iss} = tx_packets{iss}.*freq_offset_sig;
 end
 
-[packet11, packet11_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
+[packet11, packet11_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB,AWGN_Only_Channel);
 if n_rx == 2
-[packet21, packet21_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB); 
+[packet21, packet21_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB,AWGN_Only_Channel); 
 end
 if nss >= 2
-[packet12, packet12_no_awgn] = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
-[packet21, packet21_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB);
-[packet22, packet22_no_awgn] = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB);
-end
-
-if Ideal_Channel_Estimation
-    packet11 = packet11_no_awgn;
-    if n_rx == 2
-        packet21 = packet21_no_awgn;
-    end
-    if nss >= 2
-        packet12 = packet12_no_awgn;
-        packet21 = packet21_no_awgn;
-        packet22 = packet22_no_awgn;
-    end
+[packet12, packet12_no_awgn] = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB,AWGN_Only_Channel);
+[packet21, packet21_no_awgn] = create_channel_model(tx_packets{1},amplitudes,delays,d,SNR_dB,AWGN_Only_Channel);
+[packet22, packet22_no_awgn] = create_channel_model(tx_packets{2},amplitudes,delays,d,SNR_dB,AWGN_Only_Channel);
 end
 
 rx_packets = cell(nss,1);
@@ -86,10 +110,23 @@ elseif n_rx == 1 && nss == 2
 rx_packets{1} = packet11+packet12;
 end
 
+if Ideal_Channel_Estimation
+    rx_packets_no_awgn = cell(nss,1);
+    if n_rx == 1 && nss == 1
+    rx_packets_no_awgn{1} = packet11_no_awgn;
+    elseif n_rx == 2 && nss == 2
+    rx_packets_no_awgn{1} = packet11_no_awgn+packet12_no_awgn;
+    rx_packets_no_awgn{2} = packet21_no_awgn+packet22_no_awgn;
+    elseif n_rx == 2 && nss == 1
+    rx_packets_no_awgn{1} = packet11_no_awgn;
+    rx_packets_no_awgn{2} = packet21_no_awgn;
+    elseif n_rx == 1 && nss == 2
+    rx_packets_no_awgn{1} = packet11_no_awgn+packet12_no_awgn;
+    end
+end
+
 start_ind_htltf = zeros(1,n_rx);
 corrected_packet = cell(1,n_rx);
-dropped_packets = 0;
-missed_htltf_starts = 0;
 
 for i_rx = 1:n_rx
 packet = rx_packets{i_rx};
@@ -174,11 +211,13 @@ end
 packet_agc(t:end) = 10^(AGC_gain_dB/20)*packet(t:end);
 AGC_gain_history(t:end) = AGC_gain_dB;
 error_history(t:end) = error;
-if ~packet_detected
-    dropped_packets = dropped_packets + 1;
+if (~packet_detected) || (packet_detected > 500)
+    SNR_DroppedPackets(snr_idx) = SNR_DroppedPackets(snr_idx) + 1;
     total_error_count = total_error_count+num_bits;
+    SNR_ErrorCounts(snr_idx, trial) = num_bits;
+    SNR_MissedHTLTFStarts(snr_idx, trial) = missed_htltf_starts;
     disp('Packet Error!')
-    continue;
+    break;
 end
 
 if ~Ideal_AGC
@@ -238,9 +277,21 @@ end
 corrected_packet{i_rx} = packet_fc_fine;
 
 end
+
+if (~packet_detected) || (packet_detected > 500)
+    continue;
+end
+
 %%
 offset_adj = 8;
-[~, H_inv_est] = channel_estimation_final(corrected_packet, start_ind_htltf-offset_adj, n_rx, nss);
+if Ideal_Channel_Estimation
+    for i = 1:n_rx
+        rx_packets_no_awgn{i} = rx_packets_no_awgn{i}*10^(AGC_gain_dB/20);
+    end
+    [~, H_inv_est] = channel_estimation_final(rx_packets_no_awgn, start_ind_htltf-offset_adj, n_rx, nss);
+else
+    [~, H_inv_est] = channel_estimation_final(corrected_packet, start_ind_htltf-offset_adj, n_rx, nss);
+end
 
 bits_out = demodulate_data(corrected_packet, H_inv_est, start_ind_htltf-offset_adj, n_rx, nss, M, num_bits);
 
@@ -257,26 +308,46 @@ disp(['                                   Error Rate: ', num2str(ratio)])
 
 total_error_count = total_error_count+num_errs;
 error_count_hist(trial) = ratio;
-end
+
+SNR_ErrorCounts(snr_idx, trial) = num_errs;
+SNR_MissedHTLTFStarts(snr_idx, trial) = missed_htltf_starts;
+
+end % trial
 
 total_error_rate = total_error_count/(num_bits*num_trials);
 disp(['Total Error Rate: ', num2str(total_error_rate)]);
 disp(['Total Error Count: ', num2str(total_error_count)]);
 disp(['Dropped Packet Count: ', num2str(dropped_packets)]);
 disp(['Missed HTLTF Starts: ', num2str(missed_htltf_starts)]);
+
+%SNR_DroppedPackets(snr_idx) = dropped_packets;
+SNR_ErrorRates(snr_idx) = total_error_rate;
+
+end
 %%
-figure
+figure;
 clf
-subplot(2,1,1)
-hold all
-plot(real(10^(AGC_gain_dB/20)*rx_packets{1}*exp(1j*0)),'ro-')
-plot(real(packet_fc_fine),'b.-')
-% plot(real(corrected_packet{1}),'b.-')
-xlim([900 950])
-subplot(2,1,2)
-hold all
-plot(imag(10^(AGC_gain_dB/20)*rx_packets{1}*exp(1j*0)),'ro-')
-plot(imag(packet_fc_fine),'b.-')
-% plot(imag(corrected_packet{1}),'b.-')
-xlim([900 950])
+semilogy(SNR_Values, SNR_ErrorRates', '.-');
+title('BER for AWGN Channel with 1x1 System');
+xlabel('SNR Values');
+ylabel('Bit Error Rate (BER)');
+legend('Ideal Simulation','Location','best');
+%%
+% save(matname);
+
+%%
+% figure
+% clf
+% subplot(2,1,1)
+% hold all
+% plot(real(10^(AGC_gain_dB/20)*rx_packets{1}*exp(1j*0)),'ro-')
+% plot(real(packet_fc_fine),'b.-')
+% % plot(real(corrected_packet{1}),'b.-')
+% xlim([900 950])
+% subplot(2,1,2)
+% hold all
+% plot(imag(10^(AGC_gain_dB/20)*rx_packets{1}*exp(1j*0)),'ro-')
+% plot(imag(packet_fc_fine),'b.-')
+% % plot(imag(corrected_packet{1}),'b.-')
+% xlim([900 950])
 
