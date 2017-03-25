@@ -1,4 +1,4 @@
-function fine_freq_offset_est_hz = frequency_detection_fine(packet_fc_coarse, start_ind_htltf, coarse_freq_offset_est_hz)
+function fine_freq_offset_est_hz = frequency_detection_fine(packet_fc_coarse, start_ind_htltf)
 
 Fs = 20e6; % Sample Frequency
 Fc = 2.4e9; % Carrier Frequency
