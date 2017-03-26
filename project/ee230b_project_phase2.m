@@ -1,26 +1,27 @@
-close all
-clear;clc;
+% close all
+% clear;clc;
+%load('rayleigh_channel_ideal.mat');
 
 num_trials = 75;
 Fc = 2.4e9; % Carrier Frequency
 
 AWGN_Only_Channel = 0; % Rayleigh if 0
-Ideal_AGC = 1;
-Ideal_BBD = 1;
+Ideal_AGC = 0;
+Ideal_BBD = 0;
 Ideal_Channel_Estimation = 1; % No AWGN Noise
 Ideal_Frequency_Estimation = 1;
 
 OutputFreqs = 0;
 d = 50;
-SNR_Values = 0:5:30;
-amplitudes = [0];
-delays = [0];
+SNR_Values = 0:4:24;
+% amplitudes = [0];
+% delays = [0];
 % amplitudes = [0, 0];
 % delays = [0, 50e-9];
-%amplitudes = [0, -3, -6, -10];
-%delays = [0, 70e-9, 150e-9, 200e-9];
+amplitudes = [0, -3, -6, -10];
+delays = [0, 70e-9, 150e-9, 200e-9];
 freq_offset_ppm = 10; %50; 
-M = 64;
+M = 16;
 
 % Create Filename
 if AWGN_Only_Channel
@@ -53,18 +54,18 @@ num_bits = round(0.25*bits_per_kB);
 bandwidth = 20e6;
 iss = 1;
 nss = 1;
-n_rx = 1;
+n_rx = 2;
 
 if Ideal_Frequency_Estimation
     freq_offset_ppm = 0;
 end
 
-SNR_ErrorRates = zeros(numel(SNR_Values), 1);
-SNR_ErrorCounts = zeros(numel(SNR_Values), num_trials);
-SNR_DroppedPackets = zeros(numel(SNR_Values), 1);
-SNR_MissedHTLTFStarts = zeros(numel(SNR_Values), num_trials);
+% SNR_ErrorRates = zeros(numel(SNR_Values), 1);
+% SNR_ErrorCounts = zeros(numel(SNR_Values), num_trials);
+% SNR_DroppedPackets = zeros(numel(SNR_Values), 1);
+% SNR_MissedHTLTFStarts = zeros(numel(SNR_Values), num_trials);
 
-for snr_idx = 1:numel(SNR_Values)
+for snr_idx = 6:6%1:numel(SNR_Values)
 SNR_dB = SNR_Values(snr_idx);
 total_error_count = 0;
 error_count_hist = zeros(num_trials,1);
@@ -135,7 +136,11 @@ packet = rx_packets{i_rx};
 % Input Parameters
 pow_desired_dB = -6; % Desired power level
 P_est_samples = 8; % Number of samples to use to estimate P_avg
-AGC_gain_dB = 0; % Initial AGC gain
+if Ideal_AGC
+    AGC_gain_dB = 180; % Initial AGC gain
+else
+    AGC_gain_dB = 0; % Initial AGC gain
+end
 mu_agc = 0.1; % AGC adaptation parameter
 % Other initializations and pre-set parameters
 packet_agc = zeros(size(packet)); % Signal output from AGC
@@ -148,10 +153,15 @@ error_history = zeros(size(packet)); % Store error history
 
 %% Packet Detection
 threshold = 0.45;
-packet_detected = 0;
+if Ideal_BBD
+    packet_detected = 301;
+else
+    packet_detected = 0;
+end
 
 %% AGC and Packet Detection Loop
 time_vec = 1:numel(rx_packets{1});
+if ~Ideal_AGC
 for t = time_vec    
     % -- AGC --
     if (~packet_detected) || (packet_detected && (t < AGC_off_ind + packet_detected))
@@ -196,12 +206,6 @@ for t = time_vec
     % -- Packet Detection --
     if (t > 80) && (packet_detected == 0)
         [packet_detected, ds1, ds2] = packet_detection(packet_agc, iss, nss, t-63, t, threshold);
-%         if packet_detected && (t <= 300) % Debug mechanism
-%             fprintf('False Packet Detection at t=%d\n',t);
-%             packet_detected = 0;
-%         elseif packet_detected
-%             packet_detected = t;
-%         end
         if packet_detected
             packet_detected = t;
         end
@@ -219,6 +223,9 @@ if (~packet_detected) || (packet_detected > 500)
     disp('Packet Error!')
     break;
 end
+else
+    packet_agc = 10^(AGC_gain_dB/20)*packet;
+end
 
 if ~Ideal_AGC
 % Saturation of ADC
@@ -229,19 +236,20 @@ if ~Ideal_AGC
 end
 
 % -- Frequency Detection Coarse --
-% Add freq offset to packet signal
-if OutputFreqs
-    disp(['Freq Offset Actual (ppm): ', num2str(freq_offset_ppm)]);
-end
-coarse_freq_offset_est_hz = frequency_detection_coarse(packet_agc, packet_detected);
-coarse_freq_offset_sig = exp(-2j*pi*coarse_freq_offset_est_hz/bandwidth*(1:numel(packet_agc)));
-if OutputFreqs
-    coarse_freq_offset_est_ppm = coarse_freq_offset_est_hz/Fc*1e6;
-    disp(['Course Freq Offset Est (ppm): ', num2str(coarse_freq_offset_est_ppm)]);
-end
-packet_fc_coarse = packet_agc.*coarse_freq_offset_sig;
 if Ideal_Frequency_Estimation
     packet_fc_coarse = packet_agc;
+else
+    % Add freq offset to packet signal
+    if OutputFreqs
+        disp(['Freq Offset Actual (ppm): ', num2str(freq_offset_ppm)]);
+    end
+    coarse_freq_offset_est_hz = frequency_detection_coarse(packet_agc, packet_detected);
+    coarse_freq_offset_sig = exp(-2j*pi*coarse_freq_offset_est_hz/bandwidth*(1:numel(packet_agc)));
+    if OutputFreqs
+        coarse_freq_offset_est_ppm = coarse_freq_offset_est_hz/Fc*1e6;
+        disp(['Course Freq Offset Est (ppm): ', num2str(coarse_freq_offset_est_ppm)]);
+    end
+    packet_fc_coarse = packet_agc.*coarse_freq_offset_sig;
 end
 
 % -- HT-LTF Start Index --
@@ -251,34 +259,41 @@ else
     [start_ind_htltf(i_rx), ~] = htltf_start(packet_fc_coarse, iss, nss, packet_detected, numel(packet_fc_coarse));
     disp(['HTLTF_start: ', num2str(start_ind_htltf(i_rx))])
     if abs(start_ind_htltf(i_rx) - 460) > 10
-       missed_htltf_starts = missed_htltf_starts + 1;
+        missed_htltf_starts = missed_htltf_starts + 1;
+        if start_ind_htltf(i_rx) > 700
+           total_error_count = total_error_count+num_bits;
+           SNR_ErrorCounts(snr_idx, trial) = num_bits;
+           SNR_MissedHTLTFStarts(snr_idx, trial) = missed_htltf_starts;
+           disp('HTLTF Error!')
+           break;
+        end
     end
 end
 
 % -- Fine Frequency Detection --
-fine_freq_offset_est_hz = frequency_detection_fine(packet_fc_coarse, start_ind_htltf(i_rx), coarse_freq_offset_est_hz);
-% Total frequency correction
-freq_offset_est_sig = exp(-2j*pi*fine_freq_offset_est_hz/bandwidth*(1:length(packet_agc)));
-if OutputFreqs
-    fine_freq_offset_est_ppm = fine_freq_offset_est_hz/Fc*1e6;
-    disp(['Fine Freq Offset Est (ppm): ', num2str(fine_freq_offset_est_ppm)]);
-end
-packet_fc_fine = packet_fc_coarse.*freq_offset_est_sig;
 if Ideal_Frequency_Estimation
     packet_fc_fine = packet_fc_coarse;
-end
-
-total_freq_offset_est_hz = coarse_freq_offset_est_hz+fine_freq_offset_est_hz;
-if OutputFreqs
-    total_freq_offset_est_ppm = total_freq_offset_est_hz/Fc*1e6;
-    disp(['Total Freq Offset Est (ppm): ', num2str(total_freq_offset_est_ppm)]);
+else
+    fine_freq_offset_est_hz = frequency_detection_fine(packet_fc_coarse, start_ind_htltf(i_rx));
+    % Total frequency correction
+    freq_offset_est_sig = exp(-2j*pi*fine_freq_offset_est_hz/bandwidth*(1:length(packet_agc)));
+    if OutputFreqs
+        fine_freq_offset_est_ppm = fine_freq_offset_est_hz/Fc*1e6;
+        disp(['Fine Freq Offset Est (ppm): ', num2str(fine_freq_offset_est_ppm)]);
+    end
+    packet_fc_fine = packet_fc_coarse.*freq_offset_est_sig;
+    total_freq_offset_est_hz = coarse_freq_offset_est_hz+fine_freq_offset_est_hz;
+    if OutputFreqs
+        total_freq_offset_est_ppm = total_freq_offset_est_hz/Fc*1e6;
+        disp(['Total Freq Offset Est (ppm): ', num2str(total_freq_offset_est_ppm)]);
+    end
 end
 
 corrected_packet{i_rx} = packet_fc_fine;
 
 end
 
-if (~packet_detected) || (packet_detected > 500)
+if (~packet_detected) || (packet_detected > 500) || (start_ind_htltf(i_rx) > 700)
     continue;
 end
 
@@ -331,9 +346,9 @@ semilogy(SNR_Values, SNR_ErrorRates', '.-');
 title('BER for AWGN Channel with 1x1 System');
 xlabel('SNR Values');
 ylabel('Bit Error Rate (BER)');
-legend('Ideal Simulation','Location','best');
+legend('NonIdeal Simulation: AGC, BBD, CE','Location','best');
 %%
-% save(matname);
+save(matname);
 
 %%
 % figure

@@ -31,31 +31,8 @@ shadow_stddev_dB = 4;
 Shadow_dB = normrnd(0, shadow_stddev_dB, 1, nmultipath);
 Shadow = 10.^(Shadow_dB/10);
 
+% Create Rayleigh Fading parameter - one set per multipath component
 Complex_Fading = ones(nmultipath,numel(tx_packet));
-% for k = 1:nmultipath
-%     % Create Rayleigh Fading parameter - one set per multipath component
-%     C = normrnd(0, 1, numel(tx_packet), 1) + 1i.*normrnd(0, 1, numel(tx_packet), 1);
-%     Fs = bandwidth;
-%     half_shift = floor(length(C)/2);
-%     C_fft_shift = circshift(fft(C)/length(C),-half_shift);
-%     % fft frequency list (X-axis)
-%     Freqs = 0:(length(C)-1);
-%     Freqs = Freqs - half_shift;
-%     Freqs = Freqs*Fs/length(C);
-%     Fdoppler = 200; % Maximum doppler frequency
-%     % Calculate PSD
-%     PSD = 2/(pi*Fdoppler)./sqrt(1-(Freqs/Fdoppler).^2);
-%     PSD(abs(Freqs)>=Fdoppler) = 0; % Zero out PSD outside of valid range
-%     C_fft_shift_filtered = C_fft_shift.*sqrt(PSD'); %Apply filter
-%     C_filtered = ifft(circshift(C_fft_shift_filtered,half_shift));
-%     Complex_Fading(k,:) = C_filtered';
-%     figure;
-%     plot(real(Complex_Fading(k,:)));
-%     hold on
-%     plot(imag(Complex_Fading(k,:)));
-%     hold off
-% end
-
 Fdoppler = 10; % Maximum doppler frequency
 if RAYLEIGH_MATLAB
     Rayleigh_Channel = cell(1,nmultipath);
